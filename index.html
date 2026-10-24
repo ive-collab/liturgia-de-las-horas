@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Liturgia de las Horas</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#FAFAF7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#161412" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Horas">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FAFAF7; --ink:#221F1C; --rubric:#A8201A; --muted:#75706A; --rule:#E2DED8; --chip:#F0EEE9; --sheet:#FFFFFF;
+  --lc-b:#D9D2BF; --lc-r:#B3261E; --lc-m:#6A3D7A; --lc-v:#2F6B3F; --lc-o:#D88CA3;
+  --fs:19px;
+  color-scheme: light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --paper:#161412; --ink:#ECE7DF; --rubric:#E0685E; --muted:#A39C93; --rule:#34302B; --chip:#24211E; --sheet:#1E1B18; --lc-b:#CFC7B2; color-scheme:dark; }
+}
+:root[data-theme="dark"]{ --paper:#161412; --ink:#ECE7DF; --rubric:#E0685E; --muted:#A39C93; --rule:#34302B; --chip:#24211E; --sheet:#1E1B18; --lc-b:#CFC7B2; color-scheme:dark; }
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"EB Garamond",Garamond,"Times New Roman",serif;font-size:var(--fs);line-height:1.5;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+button,select,input{font:inherit;color:inherit}
+.wrap{max-width:40rem;margin:0 auto;padding:0 1.25rem 5rem;position:relative}
+.ribbon{position:fixed;top:0;right:max(1.1rem,calc(50vw - 20rem + 1.1rem));width:14px;height:calc(env(safe-area-inset-top,0px) + 92px);background:var(--lc);z-index:11;clip-path:polygon(0 0,100% 0,100% 100%,50% calc(100% - 9px),0 100%);transition:background .4s}
+header{padding:1.4rem 2rem 0 0}
+.nav{display:flex;align-items:center;gap:.25rem;font-size:.85em;color:var(--muted)}
+.nav button{background:none;border:0;padding:.35rem .55rem;border-radius:6px;cursor:pointer;color:var(--muted)}
+.nav button:hover{background:var(--chip);color:var(--ink)}
+.nav .date{flex:1;font-variant:small-caps;letter-spacing:.03em;padding:.35rem 0;text-align:left}
+h1{font-weight:500;font-size:1.55em;line-height:1.18;margin:.35rem 0 .3rem;text-wrap:balance}
+.meta{color:var(--muted);font-size:.85em;margin:0}
+.meta b{font-weight:500;color:var(--ink)}
+.note{font-size:.82em;color:var(--rubric);margin:.4rem 0 0}
+.cel{margin:1.1rem 0 0;border-top:1px solid var(--rule);padding-top:.8rem}
+.cel-h{font-size:.8em;color:var(--muted);font-variant:small-caps;letter-spacing:.04em;margin:0 0 .35rem}
+.opt{display:flex;gap:.7rem;align-items:flex-start;padding:.45rem .2rem;cursor:pointer;border-radius:6px}
+.opt:hover{background:var(--chip)}
+.opt input{accent-color:var(--rubric);margin:.32em 0 0;width:1.05em;height:1.05em;flex:none}
+.opt .sw{width:.62em;height:.62em;border-radius:50%;flex:none;margin-top:.42em;background:var(--c);box-shadow:0 0 0 1px var(--rule)}
+.opt span.n{display:block;line-height:1.3}
+.opt small{display:block;color:var(--muted);font-size:.78em}
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);background:var(--paper);z-index:5;margin:1rem -1.25rem 0;padding:.3rem 1.25rem;border-bottom:1px solid var(--rule);display:flex;gap:.15rem;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;background:none;border:0;padding:.5rem .6rem;font-size:.9em;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-.3rem}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--rubric)}
+article{padding-top:1.2rem}
+article h2{font-weight:500;font-size:1.3em;margin:0 0 .2rem;text-align:center}
+article .sub{text-align:center;color:var(--muted);font-size:.85em;margin:0 0 1.2rem}
+.part{margin:1.5rem 0 .4rem;color:var(--rubric);font-variant:small-caps;letter-spacing:.05em;font-size:.92em;text-align:center}
+.rub{color:var(--rubric);font-style:italic;font-size:.88em;margin:.4rem 0}
+.t p{margin:.45rem 0}
+.r{color:var(--rubric)}
+.ps-title{font-weight:600;margin:.9rem 0 0;font-size:.95em}
+.ps-sub{font-style:italic;color:var(--muted);margin:0 0 .4rem;font-size:.85em}
+.miss{color:var(--muted);font-style:italic;font-size:.85em;border-left:2px solid var(--rule);padding:.15rem 0 .15rem .7rem;margin:.5rem 0}
+.miss code{font-family:ui-monospace,Menlo,monospace;font-size:.85em;font-style:normal}
+.keys{margin-top:2.5rem;font-size:.75em;color:var(--muted);font-family:ui-monospace,Menlo,monospace;border-top:1px solid var(--rule);padding-top:.6rem;overflow-wrap:anywhere}
+.empty{margin:1.5rem 0;padding:1rem 1.1rem;background:var(--chip);border-radius:10px;font-size:.92em}
+.empty button,.btn{background:var(--ink);color:var(--paper);border:0;border-radius:8px;padding:.5rem .9rem;cursor:pointer;font-size:.92em}
+.btn.ghost{background:none;color:var(--ink);box-shadow:inset 0 0 0 1px var(--rule)}
+.btn.danger{background:none;color:var(--rubric);box-shadow:inset 0 0 0 1px var(--rule)}
+dialog{border:0;border-radius:14px;background:var(--sheet);color:var(--ink);width:min(36rem,calc(100vw - 1.5rem));max-height:calc(100vh - 3rem - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));padding:1.2rem 1.25rem;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(20,16,12,.45)}
+dialog h3{margin:0 0 .8rem;font-weight:500;font-size:1.25em;display:flex;justify-content:space-between;align-items:center}
+dialog h4{margin:1.3rem 0 .4rem;font-weight:600;font-size:.95em}
+.x{background:none;border:0;font-size:1.4em;line-height:1;cursor:pointer;color:var(--muted);padding:.2rem .4rem}
+.row{display:flex;gap:.6rem;align-items:center;margin:.35rem 0;font-size:.92em}
+.row label{flex:1}
+.row input[type=checkbox]{accent-color:var(--rubric);width:1.1em;height:1.1em}
+select,input[type=text],input[type=date]{background:var(--paper);border:1px solid var(--rule);border-radius:7px;padding:.35rem .5rem;font-size:.9em;max-width:100%}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:.5rem 0}
+.form .full{grid-column:1/-1}
+.list{font-size:.88em;margin:.3rem 0}
+.list div{display:flex;justify-content:space-between;gap:.5rem;padding:.3rem 0;border-bottom:1px solid var(--rule)}
+.list button{background:none;border:0;color:var(--rubric);cursor:pointer}
+.hint{font-size:.8em;color:var(--muted);margin:.3rem 0}
+.month{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;font-size:.85em}
+.month .h{text-align:center;color:var(--muted);font-size:.8em;padding:.2rem 0}
+.month button{background:none;border:0;border-radius:6px;padding:.35rem 0 .45rem;cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;gap:3px}
+.month button:hover{background:var(--chip)}
+.month button.sel{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.month button.today .d{color:var(--rubric);font-weight:600}
+.month .bar{width:60%;height:3px;border-radius:2px;background:var(--c)}
+.month .dot{position:absolute;top:4px;right:6px;width:5px;height:5px;border-radius:50%;background:var(--rubric)}
+.mhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+.mhead button{background:none;border:0;font-size:1.2em;cursor:pointer;padding:.2rem .6rem;color:var(--muted)}
+.legend{font-size:.78em;color:var(--muted);margin-top:.6rem;display:flex;gap:.4rem;align-items:center}
+.legend i{width:5px;height:5px;border-radius:50%;background:var(--rubric);display:inline-block}
+.bk p{margin:0}
+.bk .v{margin:0;padding-left:1.1em;text-indent:-1.1em}
+.bk .gap{height:.6em}
+.bk .t{margin:.5rem 0}
+.bk .t p{margin:0}
+.bk .lab{margin:1.5rem 0 .45rem;color:var(--rubric);font-variant:small-caps;letter-spacing:.04em;font-size:.95em;text-align:center}
+.bk .lab i{font-style:normal}
+.bk .rb{color:var(--rubric);font-style:italic;font-size:.86em;margin:.4rem 0}
+.bk .rb i{font-style:italic}
+.bk .an{margin:.55rem 0}
+.bk .an .r{font-style:normal}
+.bk .ps{font-weight:600;margin:1rem 0 0;font-size:.95em}
+.bk .ti{font-variant:small-caps;color:var(--muted);font-size:.86em;margin:.15rem 0 .45rem;letter-spacing:.02em}
+.bk .ep{font-style:italic;color:var(--muted);font-size:.85em;margin:0 0 .5rem}
+.bk .hd{font-weight:600;text-align:center;margin:1.2rem 0 .4rem}
+.bk i{font-style:normal;color:var(--rubric)}
+.bk a{color:var(--rubric);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;cursor:pointer}
+.bk .ref{border-left:2px solid var(--rule);padding-left:.8rem;margin:.4rem 0 .8rem}
+.bk .alt{font-size:.8em;color:var(--muted);margin:.2rem 0 .6rem}
+.bk .alt button{background:var(--chip);border:0;border-radius:6px;padding:.15rem .5rem;margin:.1rem .2rem;cursor:pointer;color:var(--ink);font-size:1em}
+.bk .src{font-size:.72em;color:var(--muted);text-align:center;margin:-.3rem 0 .4rem;font-variant:normal;letter-spacing:0}
+.bk .conm{margin:2rem 0 .3rem;text-align:center;color:var(--rubric);font-style:italic}
+.vols{font-size:.88em;margin:.3rem 0}
+.vols div{padding:.25rem 0;border-bottom:1px solid var(--rule);display:flex;justify-content:space-between}
+:focus-visible{outline:2px solid var(--rubric);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="ribbon" id="ribbon"></div>
+<div class="wrap">
+<header>
+  <div class="nav">
+    <button id="prev" aria-label="Día anterior">‹</button>
+    <button class="date" id="dateBtn" aria-label="Abrir calendario"></button>
+    <button id="todayBtn">Hoy</button>
+    <button id="next" aria-label="Día siguiente">›</button>
+    <button id="setBtn" aria-label="Ajustes">⚙︎</button>
+  </div>
+  <h1 id="title"></h1>
+  <p class="meta" id="meta"></p>
+  <div id="notes"></div>
+</header>
+<section class="cel" id="cel" hidden>
+  <p class="cel-h">Celebración que se reza</p>
+  <div id="opts" role="radiogroup"></div>
+</section>
+<nav class="tabs" id="tabs" role="tablist"></nav>
+<article id="hour"></article>
+</div>
+
+<dialog id="monthDlg">
+  <div class="mhead"><button id="mPrev" aria-label="Mes anterior">‹</button><h3 id="mTitle" style="margin:0"></h3><button id="mNext" aria-label="Mes siguiente">›</button></div>
+  <div class="month" id="month"></div>
+  <p class="legend"><i></i> hay memorias libres o conmemoraciones para elegir</p>
+  <div style="text-align:right;margin-top:.6rem"><button class="btn ghost" id="mClose">Cerrar</button></div>
+</dialog>
+
+<dialog id="setDlg">
+  <h3>Ajustes <button class="x" id="sClose" aria-label="Cerrar">×</button></h3>
+  <h4>Calendario</h4>
+  <div class="row"><label for="region">Calendario particular</label>
+    <select id="region"><option value="">Universal</option><option value="es">España</option><option value="hk">Hong Kong</option></select></div>
+  <div class="row"><label for="epiSun">Epifanía en domingo</label><input type="checkbox" id="epiSun"></div>
+  <div class="row"><label for="ascSun">Ascensión en domingo</label><input type="checkbox" id="ascSun"></div>
+  <div class="row"><label for="corpusSun">Corpus Christi en domingo</label><input type="checkbox" id="corpusSun"></div>
+  <div class="row"><label for="usarComun">En las memorias, tomar del común lo que no sea propio</label><input type="checkbox" id="usarComun"></div>
+  <h4>Calendario propio</h4>
+  <p class="hint">Para fiestas del Instituto, de la diócesis o de la comunidad. Se suman al calendario elegido.</p>
+  <div class="list" id="customList"></div>
+  <div class="form">
+    <input type="text" id="cName" class="full" placeholder="Nombre de la celebración">
+    <input type="date" id="cDate" aria-label="Fecha (se usa día y mes)">
+    <select id="cRank"><option value="S">Solemnidad</option><option value="F">Fiesta</option><option value="M">Memoria obligatoria</option><option value="L" selected>Memoria libre</option></select>
+    <select id="cColor"><option value="b">Blanco</option><option value="r">Rojo</option><option value="m">Morado</option><option value="v">Verde</option></select>
+    <input type="text" id="cComun" placeholder="Común (opcional)">
+    <button class="btn full" id="cAdd">Añadir celebración</button>
+  </div>
+  <h4>Tomos de la Liturgia de las Horas</h4>
+  <div class="vols" id="volList"></div>
+  <div class="row" style="flex-wrap:wrap">
+    <label class="btn" style="flex:none;text-align:center" for="packFile">Cargar tomos (JSON)</label>
+    <input type="file" id="packFile" accept=".json,application/json" multiple hidden>
+    <button class="btn danger" id="packClear">Quitar tomos</button>
+  </div>
+  <p class="hint" id="packStatus">Los tomos se guardan en este dispositivo y funcionan sin conexión.</p>
+  <div class="row"><label for="ciclo">Primera lectura del Oficio</label><select id="ciclo"><option value="anual">Ciclo anual</option><option value="bienal">Ciclo bienal</option><option value="todo">Mostrar ambos</option></select></div>
+  <h4>Lectura</h4>
+  <div class="row"><label for="fs">Tamaño del texto</label><input type="range" id="fs" min="15" max="26" step="1"></div>
+  <div class="row"><label for="showKeys">Mostrar claves de los textos</label><input type="checkbox" id="showKeys"></div>
+</dialog>
+
+<script>
+const LH = (() => {
+const DAY = 86400000;
+const D = (y, m, d) => Date.UTC(y, m - 1, d);
+const dow = t => new Date(t).getUTCDay();
+const ymd = t => { const x = new Date(t); return [x.getUTCFullYear(), x.getUTCMonth() + 1, x.getUTCDate()]; };
+const pad = n => String(n).padStart(2, '0');
+const iso = t => { const [a, b, c] = ymd(t); return `${a}-${pad(b)}-${pad(c)}`; };
+const mdOf = t => { const [, b, c] = ymd(t); return `${pad(b)}-${pad(c)}`; };
+const fromIso = s => { const [a, b, c] = s.split('-').map(Number); return D(a, b, c); };
+const roman = n => { const v = [[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']]; let r = ''; for (const [k, s] of v) while (n >= k) { r += s; n -= k; } return r; };
+const WD = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const slug = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+const sunOnOrBefore = t => t - dow(t) * DAY;
+const sunAfter = t => t + (7 - dow(t)) * DAY;
+
+function easter(y) {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4,
+    f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30,
+    i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451),
+    n = h + l - 7 * m + 114;
+  return D(y, Math.floor(n / 31), (n % 31) + 1);
+}
+
+const aCache = {};
+function anchors(y, S) {
+  const key = `${y}|${S.epiSun}|${S.ascSun}|${S.corpusSun}`;
+  if (aCache[key]) return aCache[key];
+  const E = easter(y), xmas = D(y, 12, 25);
+  const adv4 = xmas - (dow(xmas) === 0 ? 7 : dow(xmas)) * DAY, adv1 = adv4 - 21 * DAY;
+  let epi;
+  if (S.epiSun) { epi = D(y, 1, 2); while (dow(epi)) epi += DAY; } else epi = D(y, 1, 6);
+  let bap;
+  if (S.epiSun) bap = ymd(epi)[2] >= 7 ? epi + DAY : sunAfter(epi); else bap = sunAfter(D(y, 1, 6));
+  let hf = null; for (let t = D(y, 12, 26); t <= D(y, 12, 31); t += DAY) if (dow(t) === 0) { hf = t; break; }
+  if (!hf) hf = D(y, 12, 30);
+  const pent = E + 49 * DAY;
+  return aCache[key] = {
+    E, ash: E - 46 * DAY, palm: E - 7 * DAY, pent,
+    asc: S.ascSun ? E + 42 * DAY : E + 39 * DAY,
+    trin: pent + 7 * DAY, corpus: S.corpusSun ? pent + 14 * DAY : pent + 11 * DAY,
+    heart: pent + 19 * DAY, immHeart: pent + 20 * DAY, motherChurch: pent + DAY, priest: pent + 4 * DAY,
+    adv1, ck: adv1 - 7 * DAY, epi, bap, hf, xmas
+  };
+}
+
+// Calendario romano general (forma actual). Rango: S solemnidad, F fiesta, FL fiesta del Señor, M memoria, L memoria libre
+const GENERAL = `
+01-01|S|b|Santa María, Madre de Dios
+01-02|M|b|Santos Basilio Magno y Gregorio Nacianceno, obispos y doctores
+01-03|L|b|El Santísimo Nombre de Jesús
+01-07|L|b|San Raimundo de Peñafort, presbítero
+01-13|L|b|San Hilario, obispo y doctor
+01-17|M|b|San Antonio, abad
+01-20|L|r|San Fabián, papa y mártir
+01-20|L|r|San Sebastián, mártir
+01-21|M|r|Santa Inés, virgen y mártir
+01-22|L|r|San Vicente, diácono y mártir
+01-24|M|b|San Francisco de Sales, obispo y doctor
+01-25|F|b|La Conversión de san Pablo, apóstol
+01-26|M|b|Santos Timoteo y Tito, obispos
+01-27|L|b|Santa Ángela de Mérici, virgen
+01-28|M|b|Santo Tomás de Aquino, presbítero y doctor
+01-31|M|b|San Juan Bosco, presbítero
+02-02|FL|b|La Presentación del Señor
+02-03|L|r|San Blas, obispo y mártir
+02-03|L|b|San Óscar, obispo
+02-05|M|r|Santa Águeda, virgen y mártir
+02-06|M|r|Santos Pablo Miki y compañeros, mártires
+02-08|L|b|San Jerónimo Emiliani
+02-08|L|b|Santa Josefina Bakhita, virgen
+02-10|M|b|Santa Escolástica, virgen
+02-11|L|b|Nuestra Señora de Lourdes
+02-14|M|b|Santos Cirilo, monje, y Metodio, obispo
+02-17|L|b|Los siete santos Fundadores de los Siervos de la Virgen María
+02-21|L|b|San Pedro Damián, obispo y doctor
+02-22|F|b|La Cátedra de san Pedro, apóstol
+02-23|M|r|San Policarpo, obispo y mártir
+02-27|L|b|San Gregorio de Narek, abad y doctor
+03-04|L|b|San Casimiro
+03-07|M|r|Santas Perpetua y Felicidad, mártires
+03-08|L|b|San Juan de Dios, religioso
+03-09|L|b|Santa Francisca Romana, religiosa
+03-17|L|b|San Patricio, obispo
+03-18|L|b|San Cirilo de Jerusalén, obispo y doctor
+03-19|S|b|San José, esposo de la Virgen María
+03-23|L|b|Santo Toribio de Mogrovejo, obispo
+03-25|S|b|La Anunciación del Señor
+04-02|L|b|San Francisco de Paula, ermitaño
+04-04|L|b|San Isidoro, obispo y doctor
+04-05|L|b|San Vicente Ferrer, presbítero
+04-07|M|b|San Juan Bautista de la Salle, presbítero
+04-11|M|r|San Estanislao, obispo y mártir
+04-13|L|r|San Martín I, papa y mártir
+04-21|L|b|San Anselmo, obispo y doctor
+04-23|L|r|San Jorge, mártir
+04-23|L|r|San Adalberto, obispo y mártir
+04-24|L|r|San Fidel de Sigmaringa, presbítero y mártir
+04-25|F|r|San Marcos, evangelista
+04-28|L|r|San Pedro Chanel, presbítero y mártir
+04-28|L|b|San Luis María Grignion de Montfort, presbítero
+04-29|M|b|Santa Catalina de Siena, virgen y doctora
+04-30|L|b|San Pío V, papa
+05-01|L|b|San José Obrero
+05-02|M|b|San Atanasio, obispo y doctor
+05-03|F|r|Santos Felipe y Santiago, apóstoles
+05-10|L|b|San Juan de Ávila, presbítero y doctor
+05-12|L|r|Santos Nereo y Aquiles, mártires
+05-12|L|r|San Pancracio, mártir
+05-13|L|b|Nuestra Señora de Fátima
+05-14|F|r|San Matías, apóstol
+05-18|L|r|San Juan I, papa y mártir
+05-20|L|b|San Bernardino de Siena, presbítero
+05-21|L|r|Santos Cristóbal Magallanes y compañeros, mártires
+05-22|L|b|Santa Rita de Casia, religiosa
+05-25|L|b|San Beda el Venerable, presbítero y doctor
+05-25|L|b|San Gregorio VII, papa
+05-25|L|b|Santa María Magdalena de Pazzi, virgen
+05-26|M|b|San Felipe Neri, presbítero
+05-27|L|b|San Agustín de Canterbury, obispo
+05-29|L|b|San Pablo VI, papa
+05-31|F|b|La Visitación de la Virgen María
+06-01|M|r|San Justino, mártir
+06-02|L|r|Santos Marcelino y Pedro, mártires
+06-03|M|r|Santos Carlos Lwanga y compañeros, mártires
+06-05|M|r|San Bonifacio, obispo y mártir
+06-06|L|b|San Norberto, obispo
+06-09|L|b|San Efrén, diácono y doctor
+06-11|M|r|San Bernabé, apóstol
+06-13|M|b|San Antonio de Padua, presbítero y doctor
+06-19|L|b|San Romualdo, abad
+06-21|M|b|San Luis Gonzaga, religioso
+06-22|L|b|San Paulino de Nola, obispo
+06-22|L|r|Santos Juan Fisher, obispo, y Tomás Moro, mártires
+06-24|S|b|La Natividad de san Juan Bautista
+06-27|L|b|San Cirilo de Alejandría, obispo y doctor
+06-28|M|r|San Ireneo, obispo y mártir
+06-29|S|r|Santos Pedro y Pablo, apóstoles
+06-30|L|r|Santos Protomártires de la Iglesia de Roma
+07-03|F|r|Santo Tomás, apóstol
+07-04|L|b|Santa Isabel de Portugal
+07-05|L|b|San Antonio María Zaccaria, presbítero
+07-06|L|r|Santa María Goretti, virgen y mártir
+07-09|L|r|Santos Agustín Zhao Rong y compañeros, mártires
+07-11|M|b|San Benito, abad
+07-13|L|b|San Enrique
+07-14|L|b|San Camilo de Lelis, presbítero
+07-15|M|b|San Buenaventura, obispo y doctor
+07-16|L|b|Nuestra Señora del Carmen
+07-20|L|r|San Apolinar, obispo y mártir
+07-21|L|b|San Lorenzo de Brindis, presbítero y doctor
+07-22|F|b|Santa María Magdalena
+07-23|L|b|Santa Brígida, religiosa
+07-24|L|b|San Sarbelio Makhluf, presbítero
+07-25|F|r|Santiago, apóstol
+07-26|M|b|Santos Joaquín y Ana, padres de la Virgen María
+07-29|M|b|Santos Marta, María y Lázaro
+07-30|L|b|San Pedro Crisólogo, obispo y doctor
+07-31|M|b|San Ignacio de Loyola, presbítero
+08-01|M|b|San Alfonso María de Ligorio, obispo y doctor
+08-02|L|b|San Eusebio de Vercelli, obispo
+08-02|L|b|San Pedro Julián Eymard, presbítero
+08-04|M|b|San Juan María Vianney, presbítero
+08-05|L|b|La Dedicación de la Basílica de Santa María
+08-06|FL|b|La Transfiguración del Señor
+08-07|L|r|Santos Sixto II, papa, y compañeros, mártires
+08-07|L|b|San Cayetano, presbítero
+08-08|M|b|Santo Domingo, presbítero
+08-09|L|r|Santa Teresa Benedicta de la Cruz, virgen y mártir
+08-10|F|r|San Lorenzo, diácono y mártir
+08-11|M|b|Santa Clara, virgen
+08-12|L|b|Santa Juana Francisca de Chantal, religiosa
+08-13|L|r|Santos Ponciano, papa, e Hipólito, presbítero, mártires
+08-14|M|r|San Maximiliano María Kolbe, presbítero y mártir
+08-15|S|b|La Asunción de la Virgen María
+08-16|L|b|San Esteban de Hungría
+08-19|L|b|San Juan Eudes, presbítero
+08-20|M|b|San Bernardo, abad y doctor
+08-21|M|b|San Pío X, papa
+08-22|M|b|Santa María Virgen, Reina
+08-23|L|b|Santa Rosa de Lima, virgen
+08-24|F|r|San Bartolomé, apóstol
+08-25|L|b|San Luis de Francia
+08-25|L|b|San José de Calasanz, presbítero
+08-27|M|b|Santa Mónica
+08-28|M|b|San Agustín, obispo y doctor
+08-29|M|r|El Martirio de san Juan Bautista
+09-03|M|b|San Gregorio Magno, papa y doctor
+09-08|F|b|La Natividad de la Virgen María
+09-09|L|b|San Pedro Claver, presbítero
+09-12|L|b|El Santísimo Nombre de María
+09-13|M|b|San Juan Crisóstomo, obispo y doctor
+09-14|FL|r|La Exaltación de la Santa Cruz
+09-15|M|b|Nuestra Señora de los Dolores
+09-16|M|r|Santos Cornelio, papa, y Cipriano, obispo, mártires
+09-17|L|b|San Roberto Belarmino, obispo y doctor
+09-17|L|b|Santa Hildegarda de Bingen, virgen y doctora
+09-19|L|r|San Jenaro, obispo y mártir
+09-20|M|r|Santos Andrés Kim Taegon, Pablo Chong Hasang y compañeros, mártires
+09-21|F|r|San Mateo, apóstol y evangelista
+09-23|M|b|San Pío de Pietrelcina, presbítero
+09-26|L|r|Santos Cosme y Damián, mártires
+09-27|M|b|San Vicente de Paúl, presbítero
+09-28|L|r|San Wenceslao, mártir
+09-28|L|r|Santos Lorenzo Ruiz y compañeros, mártires
+09-29|F|b|Santos Arcángeles Miguel, Gabriel y Rafael
+09-30|M|b|San Jerónimo, presbítero y doctor
+10-01|M|b|Santa Teresa del Niño Jesús, virgen y doctora
+10-02|M|b|Los Santos Ángeles Custodios
+10-04|M|b|San Francisco de Asís
+10-05|L|b|Santa Faustina Kowalska, virgen
+10-06|L|b|San Bruno, presbítero
+10-07|M|b|Nuestra Señora del Rosario
+10-09|L|r|Santos Dionisio, obispo, y compañeros, mártires
+10-09|L|b|San Juan Leonardi, presbítero
+10-11|L|b|San Juan XXIII, papa
+10-14|L|r|San Calixto I, papa y mártir
+10-15|M|b|Santa Teresa de Jesús, virgen y doctora
+10-16|L|b|Santa Eduvigis, religiosa
+10-16|L|b|Santa Margarita María Alacoque, virgen
+10-17|M|r|San Ignacio de Antioquía, obispo y mártir
+10-18|F|r|San Lucas, evangelista
+10-19|L|r|Santos Juan de Brébeuf, Isaac Jogues y compañeros, mártires
+10-19|L|b|San Pablo de la Cruz, presbítero
+10-22|L|b|San Juan Pablo II, papa
+10-23|L|b|San Juan de Capistrano, presbítero
+10-24|L|b|San Antonio María Claret, obispo
+10-28|F|r|Santos Simón y Judas, apóstoles
+11-01|S|b|Todos los Santos
+11-02|D|m|Conmemoración de todos los fieles difuntos
+11-03|L|b|San Martín de Porres, religioso
+11-04|M|b|San Carlos Borromeo, obispo
+11-09|FL|b|La Dedicación de la Basílica de Letrán
+11-10|M|b|San León Magno, papa y doctor
+11-11|M|b|San Martín de Tours, obispo
+11-12|M|r|San Josafat, obispo y mártir
+11-15|L|b|San Alberto Magno, obispo y doctor
+11-16|L|b|Santa Margarita de Escocia
+11-16|L|b|Santa Gertrudis, virgen
+11-17|M|b|Santa Isabel de Hungría, religiosa
+11-18|L|b|La Dedicación de las Basílicas de San Pedro y San Pablo
+11-21|M|b|La Presentación de la Virgen María
+11-22|M|r|Santa Cecilia, virgen y mártir
+11-23|L|r|San Clemente I, papa y mártir
+11-23|L|b|San Columbano, abad
+11-24|M|r|Santos Andrés Dung-Lac y compañeros, mártires
+11-25|L|r|Santa Catalina de Alejandría, virgen y mártir
+11-30|F|r|San Andrés, apóstol
+12-03|M|b|San Francisco Javier, presbítero
+12-04|L|b|San Juan Damasceno, presbítero y doctor
+12-06|L|b|San Nicolás, obispo
+12-07|M|b|San Ambrosio, obispo y doctor
+12-08|S|b|La Inmaculada Concepción de la Virgen María
+12-09|L|b|San Juan Diego Cuauhtlatoatzin
+12-10|L|b|Nuestra Señora de Loreto
+12-11|L|b|San Dámaso I, papa
+12-12|L|b|Nuestra Señora de Guadalupe
+12-13|M|r|Santa Lucía, virgen y mártir
+12-14|M|b|San Juan de la Cruz, presbítero y doctor
+12-21|L|b|San Pedro Canisio, presbítero y doctor
+12-23|L|b|San Juan de Kety, presbítero
+12-26|F|r|San Esteban, protomártir
+12-27|F|b|San Juan, apóstol y evangelista
+12-28|F|r|Los Santos Inocentes, mártires
+12-29|L|r|Santo Tomás Becket, obispo y mártir
+12-31|L|b|San Silvestre I, papa
+`;
+
+// Propio de España (parcial). "reemplaza" = nombre del calendario general sustituido
+const ESPANA = `
+02-14|F|b|Santos Cirilo, monje, y Metodio, obispo, patronos de Europa|Santos Cirilo, monje, y Metodio, obispo
+04-29|F|b|Santa Catalina de Siena, virgen y doctora, patrona de Europa|Santa Catalina de Siena, virgen y doctora
+07-11|F|b|San Benito, abad, patrono de Europa|San Benito, abad
+07-23|F|b|Santa Brígida, religiosa, patrona de Europa|Santa Brígida, religiosa
+07-25|S|r|Santiago, apóstol, patrono de España|Santiago, apóstol
+08-09|F|r|Santa Teresa Benedicta de la Cruz, virgen y mártir, patrona de Europa|Santa Teresa Benedicta de la Cruz, virgen y mártir
+10-12|F|b|Nuestra Señora del Pilar|
+`;
+
+// Santos añadidos al calendario después de la edición de 2013: común que se usa mientras no haya propio
+const COMUN_POR_NOMBRE = {
+  'San Blas, obispo y mártir': 'un-martir',
+  'San Óscar, obispo': 'pastores',
+  'San Gregorio de Narek, abad y doctor': 'doctores',
+  'San Pablo VI, papa': 'pastores',
+  'San Enrique': 'santos-varones',
+  'Santa Hildegarda de Bingen, virgen y doctora': 'virgenes',
+  'Santa Faustina Kowalska, virgen': 'virgenes',
+  'San Juan Pablo II, papa': 'pastores',
+  'Nuestra Señora de Loreto': 'santisima-virgen'
+};
+const parseLines = (txt, proper) => txt.trim().split('\n').map(l => {
+  const [md, r, c, name, repl] = l.split('|');
+  return { md, r, color: c, name, repl: repl || null, proper };
+});
+const GEN = parseLines(GENERAL, false);
+const ESP = parseLines(ESPANA, true);
+
+function precOf(r, proper) {
+  return { S: proper ? 4 : 3, D: 3, FL: 5, F: proper ? 8 : 7, M: proper ? 11 : 10, L: 12 }[r];
+}
+const COLOR = { b: 'blanco', r: 'rojo', m: 'morado', v: 'verde', o: 'rosa' };
+
+function temporal(t, S) {
+  const [y, m, d] = ymd(t); const A = anchors(y, S); const w = dow(t);
+  const r = { season: '', week: 0, psalter: 1, name: '', prec: 13, color: 'v', id: null, dow: w };
+  const wk = (a) => Math.floor((t - a) / DAY / 7);
+  if (t >= A.adv1 && t < A.xmas) {
+    r.season = 'adviento'; r.week = wk(A.adv1) + 1; r.psalter = ((r.week - 1) % 4) + 1; r.color = 'm';
+    if (w === 0) { r.name = `Domingo ${roman(r.week)} de Adviento`; r.prec = 2; if (r.week === 3) r.color = 'o'; }
+    else if (m === 12 && d >= 17) { r.name = `${d} de diciembre, feria privilegiada de Adviento`; r.prec = 9; r.id = `tiempo/adviento/dic-${d}`; }
+    else { r.name = `${WD[w]} de la ${roman(r.week)} semana de Adviento`; r.prec = 13; }
+  } else if (t >= A.xmas || t <= A.bap) {
+    r.season = 'navidad'; r.color = 'b';
+    const cy = m === 12 ? y : y - 1;
+    let ref = D(cy, 12, 26); while (dow(ref)) ref += DAY;
+    r.psalter = t < ref ? 1 : Math.min(4, Math.floor((t - ref) / DAY / 7) + 1);
+    r.week = 0;
+    if (m === 12 && d === 25) { r.name = 'La Natividad del Señor'; r.prec = 2; r.id = 'movil/navidad'; }
+    else if (m === 12 && t === A.hf) { r.name = 'La Sagrada Familia de Jesús, María y José'; r.prec = 5; r.id = 'movil/sagrada-familia'; }
+    else if (m === 12) { r.name = `Día ${d - 24}º de la octava de Navidad`; r.prec = 9; r.id = `tiempo/navidad/dic-${d}`; }
+    else if (t === A.epi) { r.name = 'La Epifanía del Señor'; r.prec = 2; r.id = 'movil/epifania'; }
+    else if (t === A.bap) { r.name = 'El Bautismo del Señor'; r.prec = 5; r.id = 'movil/bautismo'; }
+    else if (d === 1) { r.name = 'Octava de la Natividad del Señor'; r.prec = 9; }
+    else if (w === 0) { r.name = 'Domingo II después de Navidad'; r.prec = 6; r.id = 'tiempo/navidad/domingo-2'; }
+    else { r.name = `${d} de enero, feria del tiempo de Navidad`; r.prec = 13; r.id = `tiempo/navidad/ene-${pad(d)}`; }
+  } else if (t < A.ash) {
+    r.season = 'ordinario'; r.week = wk(sunOnOrBefore(A.bap)) + 1; r.psalter = ((r.week - 1) % 4) + 1; r.color = 'v';
+    if (w === 0) { r.name = `Domingo ${roman(r.week)} del tiempo ordinario`; r.prec = 6; }
+    else r.name = `${WD[w]} de la ${roman(r.week)} semana del tiempo ordinario`;
+  } else if (t < A.E) {
+    r.season = 'cuaresma'; r.color = 'm';
+    if (t < A.ash + 4 * DAY) {
+      r.week = 0; r.psalter = 4;
+      if (t === A.ash) { r.name = 'Miércoles de Ceniza'; r.prec = 2; r.id = 'movil/ceniza'; }
+      else { r.name = `${WD[w]} después de Ceniza`; r.prec = 9; r.id = `tiempo/cuaresma/0/${w}`; }
+    } else {
+      r.week = wk(A.ash + 4 * DAY) + 1; r.psalter = ((r.week - 1) % 4) + 1;
+      if (r.week === 6) {
+        r.season = 'semana-santa';
+        if (w === 0) { r.name = 'Domingo de Ramos en la Pasión del Señor'; r.prec = 2; r.color = 'r'; r.id = 'movil/ramos'; }
+        else if (w === 4) { r.name = 'Jueves Santo'; r.prec = 1; r.id = 'movil/jueves-santo'; }
+        else if (w === 5) { r.name = 'Viernes Santo de la Pasión del Señor'; r.prec = 1; r.color = 'r'; r.id = 'movil/viernes-santo'; r.season = 'triduo'; }
+        else if (w === 6) { r.name = 'Sábado Santo'; r.prec = 1; r.id = 'movil/sabado-santo'; r.season = 'triduo'; }
+        else { r.name = `${WD[w]} Santo`; r.prec = 2; }
+      } else if (w === 0) { r.name = `Domingo ${roman(r.week)} de Cuaresma`; r.prec = 2; if (r.week === 4) r.color = 'o'; }
+      else { r.name = `${WD[w]} de la ${roman(r.week)} semana de Cuaresma`; r.prec = 9; }
+    }
+  } else if (t <= A.pent) {
+    r.season = 'pascua'; r.color = 'b'; r.week = wk(A.E) + 1; r.psalter = ((r.week - 1) % 4) + 1;
+    if (t === A.E) { r.name = 'Domingo de Pascua de la Resurrección del Señor'; r.prec = 1; r.id = 'movil/pascua'; }
+    else if (r.week === 1) { r.name = `${WD[w]} de la Octava de Pascua`; r.prec = 2; r.id = `tiempo/pascua/octava/${w}`; }
+    else if (t === A.pent) { r.name = 'Domingo de Pentecostés'; r.prec = 2; r.color = 'r'; r.id = 'movil/pentecostes'; }
+    else if (t === A.asc) { r.name = 'La Ascensión del Señor'; r.prec = 2; r.id = 'movil/ascension'; }
+    else if (w === 0) { r.name = r.week === 2 ? 'Domingo II de Pascua o de la Divina Misericordia' : `Domingo ${roman(r.week)} de Pascua`; r.prec = 2; }
+    else r.name = `${WD[w]} de la ${roman(r.week)} semana de Pascua`;
+  } else {
+    r.season = 'ordinario'; r.color = 'v';
+    r.week = 34 - Math.floor((A.ck - sunOnOrBefore(t)) / DAY / 7); r.psalter = ((r.week - 1) % 4) + 1;
+    if (t === A.trin) { r.name = 'La Santísima Trinidad'; r.prec = 3; r.color = 'b'; r.id = 'movil/trinidad'; }
+    else if (t === A.corpus) { r.name = 'El Santísimo Cuerpo y Sangre de Cristo'; r.prec = 3; r.color = 'b'; r.id = 'movil/corpus'; }
+    else if (t === A.heart) { r.name = 'El Sagrado Corazón de Jesús'; r.prec = 3; r.color = 'b'; r.id = 'movil/sagrado-corazon'; }
+    else if (t === A.ck) { r.name = 'Nuestro Señor Jesucristo, Rey del Universo'; r.prec = 3; r.color = 'b'; r.id = 'movil/cristo-rey'; }
+    else if (w === 0) { r.name = `Domingo ${roman(r.week)} del tiempo ordinario`; r.prec = 6; }
+    else r.name = `${WD[w]} de la ${roman(r.week)} semana del tiempo ordinario`;
+  }
+  const keys = [];
+  if (r.id) keys.push(r.id);
+  if (r.season === 'pascua' && r.week === 1 && w !== 0) {} // octava ya incluida
+  keys.push(`tiempo/${r.season}/${r.week}/${w}`);
+  keys.push(`salterio/${r.psalter}/${w}`);
+  r.keys = keys;
+  r.colorName = COLOR[r.color];
+  return r;
+}
+
+const yCache = {};
+function buildYear(y, S, custom) {
+  const sig = `${y}|${JSON.stringify(S)}|${JSON.stringify(custom)}`;
+  if (yCache[y] && yCache[y].sig === sig) return yCache[y];
+  const days = {};
+  for (let t = D(y, 1, 1); t <= D(y, 12, 31); t += DAY) days[iso(t)] = { t, temp: temporal(t, S), fixed: [] };
+  const A = anchors(y, S);
+  let list = GEN.slice();
+  if (S.region === 'es') {
+    for (const e of ESP) { if (e.repl) list = list.filter(g => !(g.md === e.md && g.name === e.repl)); list.push(e); }
+  }
+  for (const c of (custom || [])) {
+    if (c.replace) list = list.filter(g => !(g.md === c.md && g.name === c.replace));
+    list.push({ md: c.md, r: c.r, color: c.color || 'b', name: c.name, proper: true, comun: c.comun });
+  }
+  const mk = (e, t) => ({
+    name: e.name, r: e.r, prec: precOf(e.r, e.proper), color: e.color, colorName: COLOR[e.color],
+    key: e.key || `santos/${e.md}/${slug(e.name)}`, proper: !!e.proper, md: e.md, comun: e.comun || COMUN_POR_NOMBRE[e.name]
+  });
+  const place = (t, c) => { const k = iso(t); if (days[k]) days[k].fixed.push(c); };
+  // móviles del santoral
+  place(A.motherChurch, { ...mk({ name: 'La Bienaventurada Virgen María, Madre de la Iglesia', r: 'M', color: 'b', key: 'movil/madre-de-la-iglesia' }), mother: true });
+  place(A.immHeart, { ...mk({ name: 'El Inmaculado Corazón de la Virgen María', r: 'M', color: 'b', key: 'movil/inmaculado-corazon' }), immHeart: true });
+  if (S.region === 'es') place(A.priest, mk({ name: 'Jesucristo, Sumo y Eterno Sacerdote', r: 'F', color: 'b', key: 'movil/sumo-sacerdote', proper: true }));
+  const occupied = t => { const k = iso(t); const dd = days[k]; if (!dd) return false; return dd.temp.prec <= 8 || dd.fixed.some(f => f.prec <= 8); };
+  const pending = [];
+  for (const e of list) {
+    const [mm, dd] = e.md.split('-').map(Number);
+    const t = D(y, mm, dd);
+    if (ymd(t)[1] !== mm) continue; // 29 feb
+    const c = mk(e, t);
+    if (c.prec <= 4 && e.r !== 'D') pending.push([t, c]); else place(t, c);
+  }
+  for (let [t, c] of pending) {
+    const tp = days[iso(t)].temp.prec;
+    if (tp <= 3 && !(tp === 3 && days[iso(t)].temp.id == null)) {
+      if (c.md === '03-19' && t >= A.palm && t <= A.E) t = A.palm - DAY;
+      else { t += DAY; while (occupied(t)) t += DAY; }
+      c.transferred = true;
+    }
+    place(t, c);
+  }
+  return yCache[y] = { sig, days, A };
+}
+
+const RANK = { 1: '', 2: '', 3: 'Solemnidad', 4: 'Solemnidad', 5: 'Fiesta', 6: 'Domingo', 7: 'Fiesta', 8: 'Fiesta', 9: '', 10: 'Memoria obligatoria', 11: 'Memoria obligatoria', 12: 'Memoria libre', 13: 'Feria' };
+
+function day(t, S, custom) {
+  const [y] = ymd(t);
+  const Y = buildYear(y, S, custom);
+  const dd = Y.days[iso(t)];
+  const temp = dd.temp;
+  const tOpt = { name: temp.name, prec: temp.prec, color: temp.color, colorName: temp.colorName, key: temp.id, type: 'temporal',
+    rank: temp.prec === 6 || (temp.dow === 0 && temp.prec <= 2) ? 'Domingo' : (temp.prec <= 3 && temp.id ? (temp.prec === 3 ? 'Solemnidad' : '') : (temp.prec === 5 ? 'Fiesta' : (temp.prec === 9 || temp.prec === 13 ? 'Feria' : ''))) };
+  if (temp.prec === 2 && temp.id && ['movil/navidad','movil/epifania','movil/ascension','movil/pentecostes','movil/pascua'].includes(temp.id)) tOpt.rank = 'Solemnidad';
+  if (temp.season === 'pascua' && temp.week === 1 && temp.dow !== 0) tOpt.rank = 'Octava';
+  const fixed = dd.fixed.slice().sort((a, b) => a.prec - b.prec);
+  const top = Math.min(temp.prec, ...fixed.map(f => f.prec));
+  let options = [], note = '';
+  const asOpt = (f, type) => ({ ...f, type: type || (f.prec <= 4 ? 'solemnidad' : f.prec <= 8 ? 'fiesta' : f.prec <= 11 ? 'memoria' : 'memoria libre'), rank: type === 'conmemoracion' ? 'Conmemoración' : RANK[f.prec] });
+  if (top < temp.prec) {
+    // un elemento del santoral gana
+    const best = fixed[0];
+    if (best.prec <= 8) options = [asOpt(best)];
+    else if (temp.prec === 9) options = [tOpt, ...fixed.filter(f => f.prec >= 10).map(f => asOpt(f, 'conmemoracion'))];
+    else {
+      const obl = fixed.filter(f => f.prec === 10 || f.prec === 11);
+      const libres = fixed.filter(f => f.prec === 12);
+      if (obl.length === 1) options = [asOpt(obl[0])];
+      else if (obl.length > 1) {
+        const mother = obl.find(f => f.mother);
+        if (mother) options = [asOpt(mother)];
+        else { options = [tOpt, ...obl.map(f => ({ ...asOpt(f), type: 'memoria libre', rank: 'Memoria libre' })), ...libres.map(f => asOpt(f))]; note = 'Coinciden dos memorias obligatorias: ambas pasan a libres.'; }
+      } else options = [tOpt, ...libres.map(f => asOpt(f))];
+    }
+  } else {
+    options = [tOpt];
+    if (temp.prec === 9) options.push(...fixed.filter(f => f.prec >= 10).map(f => asOpt(f, 'conmemoracion')));
+  }
+  if (options[0].type === 'temporal' && temp.season === 'ordinario' && temp.dow === 6 && temp.prec === 13 && !options.some(o => o.type === 'memoria'))
+    options.push({ name: 'Santa María en sábado', prec: 12, color: 'b', colorName: 'blanco', key: 'movil/santa-maria-sabado', comun: 'santa-maria-virgen', type: 'memoria libre', rank: 'Memoria libre' });
+  const transferred = fixed.filter(f => f.transferred);
+  return { t, iso: iso(t), temp, options, note, transferred, A: Y.A, cycle: cycles(t, S) };
+}
+
+function cycles(t, S) {
+  const [y] = ymd(t); const A = anchors(y, S);
+  const ly = t >= A.adv1 ? y + 1 : y;
+  return { dominical: ['C', 'A', 'B'][ly % 3], ferial: ly % 2 ? 'I' : 'II' };
+}
+
+return { day, temporal, anchors, easter, iso, fromIso, D, DAY, ymd, dow, WD, MESES, slug, roman, pad, mdOf };
+})();
+
+
+</script>
+<script>
+const BOOK = (() => {
+const vols = {};           // vol -> data
+const secIndex = {};       // vol -> sorted [s,e,key]
+const nrm = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+const txt = h => String(h).replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+function load(d) {
+  vols[d.vol] = d;
+  secIndex[d.vol] = Object.entries(d.sec).map(([k, v]) => [v.s, v.e, k]).sort((a, b) => a[0] - b[0]);
+}
+const has = () => Object.keys(vols).length > 0;
+const loaded = () => Object.keys(vols).map(Number).sort();
+
+function seasonVol(day) {
+  const s = day.temp.season;
+  if (s === 'adviento' || s === 'navidad') return 1;
+  if (s === 'cuaresma' || s === 'semana-santa' || s === 'triduo' || s === 'pascua') return 2;
+  return day.temp.week <= 17 ? 3 : 4;
+}
+const volOrder = v => [v, ...[1, 2, 3, 4].filter(x => x !== v)].filter(x => vols[x]);
+
+function temporalKeys(day, hour, S) {
+  const t = day.temp, w = t.dow, [y, m, d] = LH.ymd(day.t), pad = n => String(n).padStart(2, '0');
+  const k = [];
+  const id = t.id || '';
+  if (t.season === 'adviento') { if (m === 12 && d >= 17 && w !== 0) k.push(`dic-${d}`); k.push(`adviento/${t.week}/${w}`); if (m === 12 && d >= 17 && w === 0) k.push(`dic-${d}`); }
+  else if (t.season === 'navidad') {
+    if (id === 'movil/navidad') k.push('navidad');
+    else if (id === 'movil/sagrada-familia') k.push('sagrada-familia');
+    else if (id === 'movil/epifania') k.push('epifania');
+    else if (id === 'movil/bautismo') k.push('bautismo');
+    else if (m === 12) k.push(`dic-${d}`);
+    else if (d === 1) k.push('maria-madre');
+    else if (w === 0) k.push('navidad-domingo-2');
+    else if (day.t < day.A.epi) k.push(`ene-${pad(d)}`);
+    else if (!S.epiSun) k.push(`post-epifania/${d - 6}`);
+    else k.push(`post-epifania/${w}`);
+  }
+  else if (id === 'movil/ceniza') k.push('ceniza');
+  else if (t.season === 'cuaresma') k.push(`cuaresma/${t.week}/${w}`);
+  else if (t.season === 'semana-santa' || t.season === 'triduo') {
+    if (id === 'movil/ramos') k.push('ramos');
+    else if (id === 'movil/jueves-santo') k.push(...(hour === 'v' ? ['jueves-santo-cena', 'jueves-santo'] : ['jueves-santo', 'jueves-santo-cena']));
+    else if (id === 'movil/viernes-santo') k.push('viernes-santo');
+    else if (id === 'movil/sabado-santo') k.push('sabado-santo');
+    else k.push(`semana-santa/${w}`);
+  }
+  else if (t.season === 'pascua') {
+    if (id === 'movil/pascua') k.push('pascua');
+    else if (id === 'movil/ascension') k.push('ascension');
+    else if (id === 'movil/pentecostes') k.push('pentecostes');
+    else k.push(`pascua/${t.week}/${w}`);
+  }
+  else {
+    const map = { 'movil/trinidad': 'trinidad', 'movil/corpus': 'corpus', 'movil/sagrado-corazon': 'sagrado-corazon', 'movil/cristo-rey': 'cristo-rey' };
+    if (map[id]) k.push(map[id]);
+    k.push(`ordinario/${t.week}/${w}`);
+  }
+  return k.map(x => 'T:' + x);
+}
+
+function tcKey(day) {
+  const t = day.temp, [, m, dd] = LH.ymd(day.t);
+  const pre = { adviento: (m === 12 && dd >= 17) ? 'TC:ii-textos-comunes-para-el-tiempo-de-adviento' : 'TC:i-textos-comunes-para-el-tiempo-de-adviento',
+    navidad: day.t < day.A.epi && m !== 1 || (m === 1 && day.t < day.A.epi) ? 'TC:i-textos-comunes-para-el-tiempo-de-navidad' : 'TC:ii-textos-comunes-para-el-tiempo-de-navidad',
+    cuaresma: 'TC:i-textos-comunes-para-el-tiempo-de-cuaresma', 'semana-santa': 'TC:ii-textos-comunes-para-la-semana-santa',
+    pascua: day.t < day.A.asc ? 'TC:i-textos-comunes-para-el-tiempo-pascual' : 'TC:ii-textos-comunes-para-el-tiempo-pascual' }[t.season];
+  if (!pre) return null;
+  for (const v of volOrder(seasonVol(day))) for (const k of Object.keys(vols[v].sec)) if (k.startsWith(pre)) return { v, k, sec: vols[v].sec[k] };
+  return null;
+}
+function findSec(keys, v0) {
+  for (const k of keys) for (const v of volOrder(v0)) { const s = vols[v].sec[k]; if (s && (Object.keys(s.h || {}).length || !k.startsWith('T:'))) return { v, k, sec: s }; }
+  return null;
+}
+
+const STOP = new Set(['SAN', 'SANTA', 'SANTO', 'SANTOS', 'SANTAS', 'LA', 'EL', 'LOS', 'LAS', 'DE', 'DEL', 'Y', 'E', 'VIRGEN', 'MARTIR', 'MARTIRES', 'OBISPO', 'OBISPOS', 'PRESBITERO', 'DOCTOR', 'DOCTORES', 'DOCTORA', 'IGLESIA', 'PAPA', 'RELIGIOSO', 'RELIGIOSA', 'ABAD', 'COMPANEROS', 'APOSTOL', 'APOSTOLES', 'Y', 'DIACONO', 'MONJE', 'BEATO', 'BEATA', 'NUESTRA', 'SENORA']);
+const toks = s => new Set(nrm(s).split(/[^A-Z0-9]+/).filter(w => w.length > 2 && !STOP.has(w)));
+function findSaint(opt, v0) {
+  let best = null;
+  const ot = toks(opt.name);
+  for (const v of volOrder(v0)) for (const s of vols[v].santos) {
+    if (opt.md && s.md !== opt.md && !opt.movable) continue;
+    const st = toks(s.n); let sc = 0; for (const w of ot) if (st.has(w)) sc++;
+    if (opt.md && s.md === opt.md) sc += 0.5;
+    if (sc >= 1 && (!best || sc > best.sc + 0.01)) best = { v, s, sc };
+  }
+  return best;
+}
+const MOVABLE_SAINT = { 'movil/madre-de-la-iglesia': 'MADRE DE LA IGLESIA', 'movil/inmaculado-corazon': 'INMACULADO CORAZON', 'movil/sumo-sacerdote': 'SUMO Y ETERNO SACERDOTE' };
+function findMovable(opt) {
+  const needle = MOVABLE_SAINT[opt.key]; if (!needle) return null;
+  for (const v of loaded()) for (const s of vols[v].santos) if (nrm(s.n).includes(needle)) return { v, s, sc: 9 };
+  return null;
+}
+function findCommon(name, v0) {
+  if (!name) return null;
+  const n = nrm(name).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  for (const v of volOrder(v0)) for (const k of Object.keys(vols[v].sec)) if (k.startsWith('K:') && k.includes(n)) return { v, k };
+  return null;
+}
+
+// ---------- partes de una hora ----------
+function parts(v, range, hour) {
+  if (!range) return null;
+  const P = vols[v].p, out = { _order: [] };
+  let cur = '_pre', readingStarted = false;
+  const push = (k, i) => { if (!out[k]) { out[k] = []; out._order.push(k); } out[k].push(i); };
+  for (let i = range[0]; i < range[1]; i++) {
+    const [k, h, lab] = P[i];
+    if (k === 'hh' || k === 'h') { if (i > range[0]) break; continue; }
+    const t = txt(h);
+    if (k === 'l' && lab === 'antinv' && hour !== 'inv') { push(cur, i); continue; }
+    if (k === 'l') { cur = lab; if (cur === 'l1' || cur === 'l2') readingStarted = true; if (out[cur] && cur !== 'oracion') cur = cur + '+'; push(cur, i); continue; }
+    if (k === 'r' && cur !== 'salmodia' && /\bsalmos\b|salmodia/i.test(t) && !readingStarted && !/oraci[oó]n/i.test(t.slice(0, 12))) { cur = 'salmodia'; push(cur, i); continue; }
+    if (hour === 'ol' && !readingStarted && /^V\./.test(t) && cur === 'salmodia') { const nx = P[i + 1] && txt(P[i + 1][1]); if (nx && /^R\./.test(nx)) { cur = 'verso'; push(cur, i); continue; } }
+    if (k === 'b' && cur === '_pre') continue;
+    push(cur, i);
+  }
+  return out;
+}
+function hourRange(sec, hour) {
+  if (!sec) return null;
+  const h = sec.h || {};
+  if (h[hour]) return h[hour];
+  return null;
+}
+
+const INTRO_RX = /^(V\.\s*Dios mío, ven en mi auxilio|R\.\s*Señor, date prisa|Gloria al Padre|Como era en el principio|Aleluya\.?$|V\.\s*Señor,\s*(ábreme|abre) (los|mis) labios|R\.\s*Y mi boca)/i;
+const ORDER = {
+  ol: ['_pre', 'himno', 'salmodia', 'verso', 'l1', 'l2', 'tedeum', 'oracion'],
+  l: ['_pre', 'himno', 'salmodia', 'lb', 'rb', 'ce', 'preces', 'oracion'],
+  v: ['_pre', 'himno', 'salmodia', 'lb', 'rb', 'ce', 'preces', 'oracion'],
+  v1: ['_pre', 'himno', 'salmodia', 'lb', 'rb', 'ce', 'preces', 'oracion'],
+  hi: ['_pre', 'himno', 'salmodia', 'tercia', 'sexta', 'nona', 'lb', 'oracion'],
+  inv: ['_pre', 'antinv'],
+  c: ['_pre', 'examen', 'himno', 'salmodia', 'lb', 'rb', 'ce', 'oracion', 'concl', 'antmar']
+};
+// fuente = {v, parts, label, only?, exclude?}
+function merge(hour, sources) {
+  const order = ORDER[hour] || ['_pre'];
+  const res = [];
+  const used = new Set();
+  const keys = [...order];
+  if (hour !== 'inv') for (const s of sources) if (s.parts && !s.only) for (const k of s.parts._order) if (!keys.includes(k) && !keys.includes(k.replace(/\+$/, '')) && !(s.exclude || []).includes(k)) keys.push(k);
+  for (const k of keys) {
+    if (k === '_pre') {
+      const seen = new Set();
+      for (const s of sources) if (s.parts && s.parts._pre) {
+        const idx = s.parts._pre.filter(i => { const t = txt(vols[s.v].p[i][1]); if (INTRO_RX.test(t)) return false; if (seen.has(t)) return false; seen.add(t); return true; });
+        if (idx.length) { res.push({ k, v: s.v, idx, src: s.label }); if (hour === 'inv' && idx.some(i => vols[s.v].p[i][0] === 'a')) break; }
+      }
+      continue;
+    }
+    for (const s of sources) {
+      if (!s.parts || !s.parts[k]) continue;
+      if (s.only && !s.only.includes(k)) continue;
+      if (s.exclude && s.exclude.includes(k)) continue;
+      res.push({ k, v: s.v, idx: s.parts[k], src: s.label });
+      if (s.parts[k + '+']) res.push({ k: k + '+', v: s.v, idx: s.parts[k + '+'], src: s.label });
+      used.add(k); break;
+    }
+  }
+  return res;
+}
+
+function compose(day, opt, hour, S, nextDay, nextOpt) {
+  // devuelve {title, blocks:[{k,v,idx,src}], notes:[]}
+  let d = day, o = opt, h = hour;
+  if (hour === 'v' && nextDay) {
+    const hasI = !/fieles difuntos/i.test(nextOpt.name) && (nextOpt.type === 'solemnidad' || nextOpt.rank === 'Solemnidad' || (nextDay.temp.dow === 0 && nextOpt.prec <= 6));
+    if (hasI && !(opt.prec < nextOpt.prec)) { d = nextDay; o = nextOpt; h = 'v1'; }
+  }
+  const v0 = seasonVol(d), notes = [];
+  const srcs = [];
+  const tSec = findSec(temporalKeys(d, h === 'v1' ? 'v' : h, S), v0);
+  const pKey = `P:${d.temp.psalter}/${d.temp.dow}`;
+  const pSec = findSec([pKey], v0);
+  const isCel = o.type !== 'temporal' && o.type !== 'conmemoracion';
+  const mem = isCel && o.prec >= 10;
+  const minor = h === 'hi';
+  // hora intermedia: se reza tal como está en una sola fuente
+  if (h === 'hi') {
+    let raw = null, label = '';
+    if (isCel && !mem) { const f = findMovable(o) || findSaint(o, v0); if (f && f.s.h.hi) { raw = { v: f.v, r: f.s.h.hi }; label = f.s.n; } }
+    if (!raw && tSec && tSec.sec.h.hi) { raw = { v: tSec.v, r: tSec.sec.h.hi }; label = 'Propio del tiempo'; }
+    if (!raw && pSec && pSec.sec.h.hi) { raw = { v: pSec.v, r: pSec.sec.h.hi }; label = 'Salterio'; }
+    const blocks = raw ? [{ k: 'raw', v: raw.v, idx: range(raw.r[0], raw.r[1]).filter(i => !INTRO_RX.test(txt(vols[raw.v].p[i][1]))), src: label }] : [];
+    return { blocks, notes, ctx: { d, o, h } };
+  }
+  // completas
+  if (h === 'c') {
+    let cd = d.temp.dow;
+    if (isCel && o.prec <= 4) cd = 0;
+    else if (nextOpt && (nextOpt.prec <= 4 || (nextDay.temp.dow === 0)) && nextOpt.prec < o.prec) cd = 6;
+    if (d.temp.dow === 6) cd = 6;
+    const c = findSec([`C:${cd}`], v0);
+    if (c) srcs.push({ v: c.v, parts: parts(c.v, [c.sec.s + 1, c.sec.e], 'c'), label: 'Completas' });
+    return { blocks: merge('c', srcs), notes, ctx: { d, o, h } };
+  }
+  // celebración
+  let cel = null, celParts = null, comParts = null, celOracion = null;
+  if (isCel || o.type === 'conmemoracion') {
+    if (o.key === 'movil/santa-maria-sabado') {
+      const k = findSec(['K:memoria-de-santa-maria-en-sabado'], v0) || findSec(['K:comun-de-la-santisima-virgen-maria'], v0);
+      if (k) cel = { v: k.v, sec: k.sec, name: 'Santa María en sábado', commons: [] };
+    } else if (o.md === '01-01') {
+      const k = findSec(['T:maria-madre'], 1); if (k) cel = { v: k.v, sec: k.sec, name: o.name, commons: [] };
+    } else {
+      const f = findMovable(o) || findSaint(o, v0);
+      if (f) cel = { v: f.v, sec: f.s, name: f.s.n, commons: f.s.k || [] };
+      else notes.push(`El libro no tiene propio de «${o.name}». Se usa el oficio del día${o.comun ? ' y el común indicado' : ''}.`);
+    }
+    if (cel) {
+      celParts = parts(cel.v, hourRange(cel.sec, h) || (h === 'v1' ? null : null), h);
+      for (const hh of [h, 'l', 'v', 'ol']) { const pp = parts(cel.v, hourRange(cel.sec, hh), hh); if (pp && pp.oracion) { celOracion = { v: cel.v, parts: { oracion: pp.oracion, _order: ['oracion'] }, label: cel.name }; break; } }
+      const ck = (cel.commons && cel.commons[0]) ? findSec([cel.commons[0]], cel.v) : null;
+      const ck2 = !ck && o.comun ? findCommon(o.comun, v0) : null;
+      const com = ck || (ck2 && { v: ck2.v, sec: vols[ck2.v].sec[ck2.k] });
+      if (com) comParts = { v: com.v, parts: parts(com.v, hourRange(com.sec, h), h), label: 'Común' };
+    } else if (o.comun) {
+      const c2 = findCommon(o.comun, v0);
+      if (c2) { const cs = vols[c2.v].sec[c2.k]; comParts = { v: c2.v, parts: parts(c2.v, hourRange(cs, h), h), label: 'Común' }; }
+    }
+  }
+  if (o.type === 'conmemoracion') { // se reza la feria; la conmemoración se añade al final
+    srcs.push({ v: tSec && tSec.v, parts: tSec && parts(tSec.v, hourRange(tSec.sec, h), h), label: 'Propio del tiempo' });
+    if (pSec) srcs.push({ v: pSec.v, parts: parts(pSec.v, hourRange(pSec.sec, h), h), label: 'Salterio' });
+    const blocks = merge(h, srcs);
+    if (cel && (h === 'l' || h === 'v' || h === 'ol')) {
+      const cp = celParts || {};
+      blocks.push({ k: 'conm', title: 'Conmemoración: ' + cel.name });
+      for (const kk of (h === 'ol' ? ['l2', 'oracion'] : ['ce', 'oracion'])) if (cp[kk]) blocks.push({ k: kk, v: cel.v, idx: cp[kk], src: cel.name });
+      if (!cp.oracion && celOracion) blocks.push({ k: 'oracion', v: cel.v, idx: celOracion.parts.oracion, src: cel.name });
+    }
+    return { blocks, notes, ctx: { d, o, h } };
+  }
+  if (isCel && (cel || comParts) && !(mem && minor)) {
+    if (cel) srcs.push({ v: cel.v, parts: celParts, label: cel.name });
+    if (celOracion && !(celParts && celParts.oracion)) srcs.push({ ...celOracion, only: ['oracion'] });
+    if (comParts && comParts.parts && (!mem || S.usarComun)) srcs.push({ ...comParts, exclude: mem ? ['salmodia', 'l1', 'verso', 'antinv'] : [] });
+    if (!mem && (h === 'l')) { const s1 = findSec(['P:1/0'], v0); if (s1) srcs.push({ v: s1.v, parts: parts(s1.v, hourRange(s1.sec, 'l'), 'l'), label: 'Salterio, domingo I', only: ['salmodia'] }); }
+    if (!mem && h === 'v') { const s1 = findSec(['P:1/0'], v0); if (s1) srcs.push({ v: s1.v, parts: parts(s1.v, hourRange(s1.sec, 'v'), 'v'), label: 'Salterio, domingo I', only: ['salmodia'] }); }
+  }
+  if (!(isCel && cel && !mem) || true) {
+    if (tSec) srcs.push({ v: tSec.v, parts: parts(tSec.v, hourRange(tSec.sec, h), h), label: 'Propio del tiempo' });
+    const tc = tcKey(d); if (tc) srcs.push({ v: tc.v, parts: parts(tc.v, hourRange(tc.sec, h === 'v1' ? 'v' : h), h), label: 'Textos comunes del tiempo', exclude: ['oracion'] });
+    if (pSec) srcs.push({ v: pSec.v, parts: parts(pSec.v, hourRange(pSec.sec, h), h), label: 'Salterio' });
+  }
+  // feria del T.O.: oración del Oficio de lectura = la del domingo
+  if (h === 'ol' && d.temp.season === 'ordinario') {
+    const vv = volOrder(v0).find(x => vols[x].otp && vols[x].otp[d.temp.week]);
+    if (vv) srcs.push({ v: vv, parts: { oracion: [vols[vv].otp[d.temp.week]], _order: ['oracion'] }, label: 'Oración del domingo', only: ['oracion'] });
+  }
+  let blocks = merge(h, srcs);
+  if ((h === 'ol' || h === 'v' || h === 'v1') && !blocks.some(x => x.k === 'oracion') && hour !== 'l') {
+    const lr = compose(d, o, 'l', S, null, null);
+    const ob = lr.blocks.find(x => x.k === 'oracion'); if (ob) blocks.push({ ...ob, src: ob.src + ' (de Laudes)' });
+  }
+  const lent = ['cuaresma', 'semana-santa', 'triduo'].includes(d.temp.season);
+  const teDeum = (d.temp.dow === 0 && !lent) || (isCel && o.prec <= 8) || (o.type === 'temporal' && o.prec <= 5 && !lent) || (d.temp.season === 'pascua' && d.temp.week === 1) || (d.temp.season === 'navidad' && d.temp.prec === 9);
+  if (!teDeum) blocks = blocks.filter(b => b.k !== 'tedeum');
+  return { blocks, notes, ctx: { d, o, h, teDeum } };
+}
+
+// rango de un enlace
+function secAt(v, i) {
+  let best = null;
+  for (const [s, e, k] of secIndex[v]) { if (s > i) break; if (i < e && (!best || s >= best[0])) best = [s, e, k]; }
+  return best;
+}
+function sectionOfSaintAt(v, i) {
+  for (const s of vols[v].santos) if (s.s <= i && i < s.e) return s;
+  return null;
+}
+function refTarget(v, i, hour, partKey) {
+  const P = vols[v].p;
+  const sec = secAt(v, i), st = sectionOfSaintAt(v, i);
+  const container = st && (!sec || st.s >= sec[0]) ? { s: st.s, e: st.e, h: st.h } : sec ? vols[v].sec[sec[2]] : null;
+  const head = P[i] && (P[i][0] === 'h' || (container && i - container.s <= 2));
+  if (container && head && container.s <= i) {
+    const hr = (container.h || {})[hour] || (hour === 'v1' ? (container.h || {}).v : null);
+    if (hr) { const pp = parts(v, hr, hour); if (partKey && pp[partKey]) return pp[partKey]; return range(hr[0], hr[1]); }
+    return range(i, Math.min(container.e, i + 300));
+  }
+  if (P[i] && P[i][0] === 'hh') {
+    let e = i + 1; while (e < P.length && P[e][0] !== 'hh' && P[e][0] !== 'h') e++;
+    const pp = parts(v, [i + 1, e], hour); if (partKey && pp[partKey]) return pp[partKey]; return range(i + 1, e);
+  }
+  let e = i + 1;
+  const ROMAN = /^(I|II|III|IV|V|VI|VII|VIII|IX|X)$/;
+  if (P[i] && ROMAN.test(txt(P[i][1]).trim())) { while (e < P.length && !['l', 'h', 'hh'].includes(P[e][0]) && !ROMAN.test(txt(P[e][1]).trim()) && e - i < 120) e++; return range(i + 1, e); }
+  if (P[i] && P[i][0] === 'ps') { while (e < P.length && !['l', 'h', 'hh', 'ps'].includes(P[e][0]) && e - i < 200) e++; return range(i, e); }
+  if (P[i] && P[i][0] === 'l') { while (e < P.length && !['l', 'h', 'hh'].includes(P[e][0])) e++; }
+  else { while (e < P.length && !['l', 'h', 'hh'].includes(P[e][0]) && e - i < 300) e++; }
+  return range(i, e);
+}
+const range = (a, b) => { const r = []; for (let i = a; i < b; i++) r.push(i); return r; };
+
+function psalm94(v0) {
+  for (const v of volOrder(v0)) {
+    const s = vols[v].sec.O; if (!s) continue; const P = vols[v].p;
+    for (let i = s.s; i < s.e; i++) if (P[i][0] === 'ps' && /^Salmo 94\b/.test(txt(P[i][1]))) {
+      let e = i + 1; while (e < s.e && !['ps', 'l', 'h', 'hh'].includes(P[e][0])) e++;
+      return { v, idx: range(i, e) };
+    }
+  }
+  return null;
+}
+return { psalm94, load, has, loaded, vols: () => vols, compose, refTarget, seasonVol, txt, nrm };
+})();
+
+
+</script>
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('lh.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('lh.' + k, JSON.stringify(v)); } catch {} }
+};
+const PRESETS = { '': { epiSun: false, ascSun: false, corpusSun: false }, es: { epiSun: false, ascSun: true, corpusSun: true }, hk: { epiSun: true, ascSun: true, corpusSun: true } };
+let S = Object.assign({ region: 'es', epiSun: false, ascSun: true, corpusSun: true, usarComun: true, fs: 19, showKeys: false, ciclo: 'anual' }, store.get('settings', {}));
+let custom = store.get('custom', []);
+let sel = store.get('sel', {});
+const now = new Date();
+let cur = LH.D(now.getFullYear(), now.getMonth() + 1, now.getDate());
+let hour = autoHour();
+let monthCursor = null;
+const VOLNAMES = { 1: 'I · Adviento y Navidad', 2: 'II · Cuaresma y Pascua', 3: 'III · Tiempo ordinario, semanas I–XVII', 4: 'IV · Tiempo ordinario, semanas XVIII–XXXIV' };
+
+const idb = {
+  open() { return new Promise((res, rej) => { const r = indexedDB.open('lh', 2); r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains('kv')) r.result.createObjectStore('kv'); }; r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
+  async get(k) { try { const db = await this.open(); return await new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); } catch { return null; } },
+  async set(k, v) { try { const db = await this.open(); await new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); return true; } catch { return false; } },
+  async del(k) { try { const db = await this.open(); await new Promise(res => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').delete(k); tx.oncomplete = res; tx.onerror = res; }); } catch {} }
+};
+
+function autoHour() { const h = new Date().getHours(); return h < 5 ? 'c' : h < 9 ? 'l' : h < 16 ? 'hi' : h < 21 ? 'v' : 'c'; }
+const HOURS = [['inv', 'Invitatorio'], ['ol', 'Oficio de lectura'], ['l', 'Laudes'], ['hi', 'Hora intermedia'], ['v', 'Vísperas'], ['c', 'Completas']];
+const LC = { b: 'var(--lc-b)', r: 'var(--lc-r)', m: 'var(--lc-m)', v: 'var(--lc-v)', o: 'var(--lc-o)' };
+const SEASON = { adviento: 'Adviento', navidad: 'Navidad', ordinario: 'Tiempo ordinario', cuaresma: 'Cuaresma', 'semana-santa': 'Semana Santa', triduo: 'Triduo pascual', pascua: 'Pascua' };
+const engineSettings = () => ({ region: S.region === 'es' ? 'es' : '', epiSun: S.epiSun, ascSun: S.ascSun, corpusSun: S.corpusSun });
+const getDay = t => LH.day(t, engineSettings(), custom);
+const optId = o => o.key || ('temporal:' + o.name);
+function chosen(d) { const id = sel[d.iso]; return d.options.find(o => optId(o) === id) || d.options[0]; }
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const ORD = {
+  intro: 'V. Dios mío, ven en mi auxilio.\nR. Señor, date prisa en socorrerme.\nGloria al Padre, y al Hijo, y al Espíritu Santo.\nComo era en el principio, ahora y siempre, por los siglos de los siglos. Amén.',
+  inv: 'V. Señor, ábreme los labios.\nR. Y mi boca proclamará tu alabanza.',
+  mayor: 'V. El Señor nos bendiga, nos guarde de todo mal y nos lleve a la vida eterna.\nR. Amén.',
+  menor: 'V. Bendigamos al Señor.\nR. Demos gracias a Dios.',
+  comp: 'V. El Señor todopoderoso nos conceda una noche tranquila y una muerte santa.\nR. Amén.'
+};
+const redVR = s => s.replace(/(^|<br>)(V\.|R\.)/g, '$1<span class="r">$2</span>');
+const fixed = s => `<div class="t"><p>${redVR(esc(s).replace(/\n/g, '<br>'))}</p></div>`;
+
+// ---------- render de párrafos del libro ----------
+function paraHTML(v, i) {
+  const [k, h] = BOOK.vols()[v].p[i];
+  let x = h.replace(/(^|\s)(\*|†)(?=\s|$)/g, '$1<i>$2</i>');
+  if (k === 'l') return `<div class="lab">${x}</div>`;
+  if (k === 'r') return `<p class="rb">${x}</p>`;
+  if (k === 'a') return `<p class="an">${x.replace(/^(Ant\.(\s*\d\.)?)/, '<span class="r" style="color:var(--rubric)">$1</span>')}</p>`;
+  if (k === 'ps') return `<p class="ps">${x}</p>`;
+  if (k === 'ti') return `<p class="ti">${x}</p>`;
+  if (k === 'ep') return `<p class="ep">${x}</p>`;
+  if (k === 'h' || k === 'hh') return `<p class="hd">${x}</p>`;
+  if (k === 'b') return `<div class="gap"></div>`;
+  x = x.replace(/^(V\.|R\.)/, '<span style="color:var(--rubric)">$1</span>');
+  if (k === 't') return `<p class="t">${x}</p>`;
+  return `<p class="v">${x}</p>`;
+}
+function filterReadings(v, idx, key) {
+  const P = BOOK.vols()[v].p, T = i => BOOK.txt(P[i][1]).trim();
+  let out = idx;
+  if (key === 'l1' && S.ciclo !== 'todo') {
+    const pos = rx => idx.findIndex(i => rx.test(T(i)));
+    const an = pos(/^Ciclo anual/i), bi = pos(/^Ciclo bienal/i);
+    if (an >= 0 && bi > an) {
+      if (S.ciclo === 'anual') out = [...idx.slice(0, an), ...idx.slice(an + 1, bi)];
+      else {
+        const cyc = getDay(cur).cycle.ferial;
+        const a1 = idx.findIndex((i, j) => j > bi && /^Año I:?$/.test(T(i))), a2 = idx.findIndex((i, j) => j > bi && /^Año II:?$/.test(T(i)));
+        if (a1 > 0 && a2 > a1) out = [...idx.slice(0, an), ...(cyc === 'I' ? idx.slice(a1 + 1, a2) : idx.slice(a2 + 1))];
+        else out = [...idx.slice(0, an), ...idx.slice(bi + 1)];
+      }
+    }
+  }
+  // antífonas por ciclo dominical
+  const dom = getDay(cur).cycle.dominical;
+  out = out.filter(i => { const m = T(i).match(/^Año ([ABC]):/); return !m || m[1] === dom; });
+  return out;
+}
+const AUTO_TXT = /benedictus|magn[ií]ficat|nunc dimittis|te deum/i;
+function renderIdx(v, idx, ctx, depth) {
+  let html = '';
+  for (const i of idx) {
+    let ph = paraHTML(v, i);
+    if ((ctx.part === 'l1' || ctx.part === 'l2') && ph.startsWith('<p class="v">')) ph = ph.replace('<p class="v">', '<p class="t">');
+    const raw = BOOK.vols()[v].p[i][1];
+    const links = [...raw.matchAll(/<a data-r="(\d+)">(.*?)<\/a>/g)];
+    if (links.length && depth < 3) {
+      let autoN = -1;
+      if ((ctx.part === 'himno' || ctx.part === 'salmodia') && depth === 0) autoN = 0;
+      links.forEach((m, n) => { if (autoN < 0 && AUTO_TXT.test(BOOK.txt(m[2]))) autoN = n; });
+      if (ctx.part === '_pre' || ctx.part === 'inv') autoN = -1;
+      ph = ph.replace(/<a data-r="(\d+)">/g, (m, r) => `<a data-r="${r}" data-v="${v}" data-part="${ctx.part || ''}" data-d="${depth + 1}" tabindex="0" role="button">`);
+      html += ph;
+      if (autoN >= 0) {
+        const tgt = +links[autoN][1];
+        html += `<div class="ref" data-for="${v}:${tgt}">${renderRef(v, tgt, ctx, depth + 1)}</div>`;
+        if (ctx.part === 'himno' && links.length > 1) html += `<div class="alt">Otros himnos: ${links.filter((_, n) => n !== autoN).map(m => `<button data-swap="${m[1]}" data-v="${v}">${esc(BOOK.txt(m[2]))}</button>`).join('')}</div>`;
+      }
+    } else html += ph;
+  }
+  return html;
+}
+function renderRef(v, tgt, ctx, depth) {
+  const idx = BOOK.refTarget(v, tgt, ctx.h, ctx.part && ['himno', 'salmodia'].includes(ctx.part) ? ctx.part : null);
+  return renderIdx(v, idx.filter(i => !/^(V\.\s*Dios mío, ven en mi auxilio|R\.\s*Señor, date prisa)/.test(BOOK.txt(BOOK.vols()[v].p[i][1]))), ctx, depth);
+}
+
+function renderHour() {
+  const el = $('#hour');
+  if (!BOOK.has()) {
+    el.innerHTML = `<div class="empty">Faltan los textos. Cargue los cuatro tomos (archivos JSON) desde Ajustes; quedan guardados en este dispositivo.<br><br><button id="goSet">Cargar tomos</button></div>`;
+    $('#goSet').onclick = openSettings; return;
+  }
+  const d = getDay(cur), o = chosen(d), n = getDay(cur + LH.DAY), no = chosen(n);
+  const r = BOOK.compose(d, o, hour, { ...engineSettings(), usarComun: S.usarComun }, n, no);
+  const h = r.ctx.h;
+  const label = h === 'v1' ? 'I Vísperas' : HOURS.find(x => x[0] === hour)[1];
+  const out = [`<h2>${label}</h2><p class="sub">${esc(r.ctx.o.name)}</p>`];
+  r.notes.forEach(t => out.push(`<p class="note" style="text-align:center">${esc(t)}</p>`));
+  const lent = ['cuaresma', 'semana-santa', 'triduo'].includes(r.ctx.d.temp.season);
+  if (h === 'inv') out.push(fixed(ORD.inv));
+  else if (h !== 'c' || true) out.push(fixed(ORD.intro + (lent ? '' : '\nAleluya.')));
+  if (!r.blocks.length) out.push(`<div class="empty">No se encontró esta hora en los tomos cargados${BOOK.loaded().includes(BOOK.seasonVol(r.ctx.d)) ? '' : ` (falta el tomo ${['', 'I', 'II', 'III', 'IV'][BOOK.seasonVol(r.ctx.d)]})`}.</div>`);
+  for (const b of r.blocks) {
+    if (b.k === 'conm') { out.push(`<p class="conm">${esc(b.title)}</p>`); continue; }
+    const part = b.k.replace(/\+$/, '');
+    const idx = filterReadings(b.v, b.idx, part);
+    out.push(`<div data-block="${esc(b.k)}">${renderIdx(b.v, idx, { h, part }, 0)}</div>`);
+    if (S.showKeys) out.push(`<p class="src">${esc(b.k)} · tomo ${b.v} · ${esc(b.src || '')}</p>`);
+  }
+  if (h === 'inv') { const p = BOOK.psalm94(BOOK.seasonVol(r.ctx.d)); if (p) out.push(renderIdx(p.v, p.idx, { h, part: 'inv' }, 1)); }
+  out.push(`<div class="lab">Conclusión</div>`);
+  out.push(fixed(h === 'l' || h === 'v' || h === 'v1' ? ORD.mayor : h === 'c' ? ORD.comp : ORD.menor));
+  el.innerHTML = `<div class="bk">${out.join('')}</div>`;
+}
+$('#hour').addEventListener('click', e => {
+  const a = e.target.closest('a[data-r]');
+  if (a) {
+    const v = +a.dataset.v, t = +a.dataset.r, key = v + ':' + t;
+    const nx = a.closest('p,div.lab')?.nextElementSibling;
+    if (nx && nx.classList.contains('ref') && nx.dataset.for === key) { nx.remove(); return; }
+    const box = document.createElement('div'); box.className = 'ref'; box.dataset.for = key;
+    const d = getDay(cur), h = (hour === 'v' && BOOK.compose(d, chosen(d), 'v', { ...engineSettings(), usarComun: S.usarComun }, getDay(cur + LH.DAY), chosen(getDay(cur + LH.DAY))).ctx.h) || hour;
+    box.innerHTML = renderRef(v, t, { h, part: a.dataset.part }, +a.dataset.d || 1);
+    a.closest('p,div.lab').after(box);
+    return;
+  }
+  const sw = e.target.closest('button[data-swap]');
+  if (sw) {
+    const alt = sw.closest('.alt'), ref = alt.previousElementSibling;
+    if (ref && ref.classList.contains('ref')) { ref.dataset.for = sw.dataset.v + ':' + sw.dataset.swap; ref.innerHTML = renderRef(+sw.dataset.v, +sw.dataset.swap, { h: hour, part: 'himno' }, 1); }
+  }
+});
+$('#hour').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('a[data-r]')) e.target.click(); });
+
+// ---------- cabecera ----------
+function render() {
+  const d = getDay(cur), opt = chosen(d);
+  const [y, m, dd] = LH.ymd(cur);
+  $('#dateBtn').textContent = `${LH.WD[d.temp.dow]}, ${dd} de ${LH.MESES[m - 1]} de ${y}`;
+  $('#title').textContent = opt.name;
+  const bits = [];
+  if (opt.rank) bits.push(`<b>${esc(opt.rank)}</b>`);
+  bits.push(SEASON[d.temp.season] || '');
+  bits.push(`Salterio: semana ${LH.roman(d.temp.psalter)}`);
+  bits.push(`Ciclo ${d.cycle.dominical}, año ${d.cycle.ferial}`);
+  $('#meta').innerHTML = bits.filter(Boolean).join(', ');
+  const notes = [];
+  if (d.note) notes.push(d.note);
+  d.transferred.forEach(f => notes.push(`Trasladada a este día: ${f.name}.`));
+  $('#notes').innerHTML = notes.map(n => `<p class="note">${esc(n)}</p>`).join('');
+  $('#ribbon').style.background = LC[opt.color] || LC.v;
+  const cel = $('#cel');
+  if (d.options.length > 1) {
+    cel.hidden = false;
+    $('#opts').innerHTML = d.options.map((o, i) => `<label class="opt"><input type="radio" name="opt" value="${i}" ${o === opt ? 'checked' : ''}><span class="sw" style="--c:${LC[o.color] || LC.v}"></span><span><span class="n">${esc(o.name)}</span><small>${esc(o.type === 'temporal' ? (o.rank || 'Feria') : o.rank)}</small></span></label>`).join('');
+    $('#opts').querySelectorAll('input').forEach(inp => inp.onchange = () => { sel[d.iso] = optId(d.options[+inp.value]); store.set('sel', sel); render(); });
+  } else cel.hidden = true;
+  $('#tabs').innerHTML = HOURS.map(([k, n]) => `<button role="tab" aria-selected="${k === hour}" data-h="${k}">${n}</button>`).join('');
+  $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => { hour = b.dataset.h; render(); });
+  const act = $('#tabs').querySelector('[aria-selected="true"]'); if (act) act.scrollIntoView({ block: 'nearest', inline: 'center' });
+  renderHour();
+}
+
+// ---------- mes ----------
+function renderMonth() {
+  const [y, m] = monthCursor;
+  $('#mTitle').textContent = `${LH.MESES[m - 1][0].toUpperCase() + LH.MESES[m - 1].slice(1)} de ${y}`;
+  const first = LH.D(y, m, 1), startDow = (LH.dow(first) + 6) % 7;
+  const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const t0 = LH.D(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  let html = ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(x => `<div class="h">${x}</div>`).join('');
+  for (let i = 0; i < startDow; i++) html += '<div></div>';
+  for (let dd = 1; dd <= days; dd++) {
+    const t = LH.D(y, m, dd), d = getDay(t), o = chosen(d);
+    html += `<button data-t="${t}" class="${t === cur ? 'sel' : ''} ${t === t0 ? 'today' : ''}" title="${esc(o.name)}" style="--c:${LC[o.color] || LC.v}"><span class="d">${dd}</span><span class="bar"></span>${d.options.length > 1 ? '<span class="dot"></span>' : ''}</button>`;
+  }
+  $('#month').innerHTML = html;
+  $('#month').querySelectorAll('button').forEach(b => b.onclick = () => { cur = +b.dataset.t; $('#monthDlg').close(); render(); });
+}
+$('#dateBtn').onclick = () => { const [y, m] = LH.ymd(cur); monthCursor = [y, m]; renderMonth(); $('#monthDlg').showModal(); };
+$('#mPrev').onclick = () => { let [y, m] = monthCursor; m--; if (!m) { m = 12; y--; } monthCursor = [y, m]; renderMonth(); };
+$('#mNext').onclick = () => { let [y, m] = monthCursor; m++; if (m > 12) { m = 1; y++; } monthCursor = [y, m]; renderMonth(); };
+$('#mClose').onclick = () => $('#monthDlg').close();
+$('#prev').onclick = () => { cur -= LH.DAY; render(); };
+$('#next').onclick = () => { cur += LH.DAY; render(); };
+$('#todayBtn').onclick = () => { const n2 = new Date(); cur = LH.D(n2.getFullYear(), n2.getMonth() + 1, n2.getDate()); hour = autoHour(); render(); };
+
+// ---------- ajustes ----------
+function applyFs() { document.documentElement.style.setProperty('--fs', S.fs + 'px'); }
+function saveS() { store.set('settings', S); applyFs(); render(); }
+function volStatus() {
+  const L = BOOK.loaded();
+  $('#volList').innerHTML = [1, 2, 3, 4].map(v => `<div><span>Tomo ${VOLNAMES[v]}</span><span style="color:${L.includes(v) ? 'var(--ink)' : 'var(--muted)'}">${L.includes(v) ? 'cargado' : 'falta'}</span></div>`).join('');
+}
+function renderCustom() {
+  $('#customList').innerHTML = custom.length ? custom.map((c, i) => `<div><span>${esc(c.md)} ${esc(c.name)} <span style="color:var(--muted)">(${{ S: 'solemnidad', F: 'fiesta', M: 'memoria', L: 'memoria libre' }[c.r]})</span></span><button data-i="${i}">Quitar</button></div>`).join('') : '<p class="hint">Sin celebraciones propias.</p>';
+  $('#customList').querySelectorAll('button').forEach(b => b.onclick = () => { custom.splice(+b.dataset.i, 1); store.set('custom', custom); renderCustom(); render(); });
+}
+function openSettings() {
+  $('#region').value = S.region; ['epiSun', 'ascSun', 'corpusSun', 'usarComun', 'showKeys'].forEach(k => $('#' + k).checked = !!S[k]);
+  $('#fs').value = S.fs; $('#ciclo').value = S.ciclo; renderCustom(); volStatus(); $('#setDlg').showModal();
+}
+$('#setBtn').onclick = openSettings;
+$('#sClose').onclick = () => $('#setDlg').close();
+$('#region').onchange = e => { S.region = e.target.value; Object.assign(S, PRESETS[S.region]); ['epiSun', 'ascSun', 'corpusSun'].forEach(k => $('#' + k).checked = S[k]); saveS(); };
+['epiSun', 'ascSun', 'corpusSun', 'usarComun', 'showKeys'].forEach(k => $('#' + k).onchange = e => { S[k] = e.target.checked; saveS(); });
+$('#fs').oninput = e => { S.fs = +e.target.value; saveS(); };
+$('#ciclo').onchange = e => { S.ciclo = e.target.value; saveS(); };
+$('#cAdd').onclick = () => {
+  const name = $('#cName').value.trim(), dt = $('#cDate').value;
+  if (!name || !dt) { $('#cName').focus(); return; }
+  custom.push({ md: dt.slice(5), name, r: $('#cRank').value, color: $('#cColor').value, comun: $('#cComun').value.trim() || undefined });
+  store.set('custom', custom); $('#cName').value = ''; $('#cComun').value = ''; renderCustom(); render();
+};
+$('#packFile').onchange = async e => {
+  const files = [...e.target.files], errs = [];
+  $('#packStatus').textContent = 'Cargando…';
+  for (const f of files) {
+    try {
+      const j = JSON.parse(await f.text());
+      if (j.formato !== 'lh-libro/1' || !j.vol) throw 0;
+      BOOK.load(j);
+      if (!(await idb.set('vol' + j.vol, j))) errs.push(`tomo ${j.vol}: no se pudo guardar en el dispositivo`);
+    } catch { errs.push(`${f.name}: no es un tomo válido`); }
+  }
+  volStatus(); render();
+  $('#packStatus').textContent = errs.length ? errs.join('; ') : 'Tomos guardados en este dispositivo.';
+  e.target.value = '';
+};
+$('#packClear').onclick = async () => { for (const v of [1, 2, 3, 4]) await idb.del('vol' + v); location.reload(); };
+
+applyFs();
+render();
+(async () => {
+  const TOMOS_VERSION = '2026-10-23';
+  let any = false;
+  const fresh = store.get('tomosVersion', null) === TOMOS_VERSION;
+  if (fresh) for (const v of [1, 2, 3, 4]) { const j = await idb.get('vol' + v); if (j && j.p) { BOOK.load(j); any = true; } }
+  if (any) { render(); return; }
+  if (!location.protocol.startsWith('http')) return;
+  // Primera vez (o tomos nuevos): se descargan los tomos incluidos con la aplicación y se guardan en el dispositivo
+  const el = $('#hour');
+  let ok = 0;
+  for (const v of [1, 2, 3, 4]) {
+    el.innerHTML = `<div class="empty">Preparando los textos para usarlos sin conexión… (tomo ${v} de 4)</div>`;
+    try {
+      const r = await fetch(`tomos/tomo-${v}.json`, { cache: 'no-cache' });
+      if (!r.ok) continue;
+      const j = await r.json();
+      BOOK.load(j); if (await idb.set('vol' + v, j)) ok++;
+    } catch {}
+  }
+  if (ok === 4) store.set('tomosVersion', TOMOS_VERSION);
+  render();
+})();
+})();
+
+</script>
+<script>
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+// Pide al navegador que no borre los tomos guardados
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+</script>
+</body>
+</html>

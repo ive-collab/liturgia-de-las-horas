@@ -1,0 +1,21 @@
+LITURGIA DE LAS HORAS — aplicación instalable con los textos incluidos
+
+IMPORTANTE: esta carpeta contiene los textos de la Liturgia de las Horas
+(© Conferencia Episcopal Española). Publíquela sólo en una dirección
+protegida con acceso restringido, nunca en una dirección abierta.
+
+1. Publicar con acceso restringido (gratis): Cloudflare Pages + Cloudflare Access
+   - Cree una cuenta en https://dash.cloudflare.com
+   - Workers y Pages → Crear → Pages → «Subir recursos» → arrastre esta carpeta.
+     Obtendrá una dirección https://nombre.pages.dev
+   - En la configuración del proyecto de Pages, active «Access policy» (Zero Trust)
+     y permita sólo las direcciones de correo que usted indique (las suyas y las de
+     sus cohermanos). Cada uno entra una vez con un código que recibe por correo.
+
+2. Instalar en el teléfono
+   - iPhone/iPad: Safari → Compartir → «Añadir a pantalla de inicio».
+   - Android: Chrome → menú ⋮ → «Instalar aplicación».
+
+3. Primer uso
+   Abra la aplicación desde el icono, con conexión. Descarga los cuatro tomos
+   (unos 14 MB) y los guarda en el teléfono. A partir de ahí funciona sin conexión.
