@@ -161,7 +161,7 @@ select,input[type=text],input[type=date]{background:var(--paper);border:1px soli
   <h3>Ajustes <button class="x" id="sClose" aria-label="Cerrar">×</button></h3>
   <h4>Calendario</h4>
   <div class="row"><label for="region">Calendario particular</label>
-    <select id="region"><option value="">Universal</option><option value="es">España</option><option value="hk">Hong Kong</option></select></div>
+    <select id="region"><option value="">Universal</option><option value="es">España</option></select></div>
   <div class="row"><label for="epiSun">Epifanía en domingo</label><input type="checkbox" id="epiSun"></div>
   <div class="row"><label for="ascSun">Ascensión en domingo</label><input type="checkbox" id="ascSun"></div>
   <div class="row"><label for="corpusSun">Corpus Christi en domingo</label><input type="checkbox" id="corpusSun"></div>
@@ -985,8 +985,9 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem('lh.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem('lh.' + k, JSON.stringify(v)); } catch {} }
 };
-const PRESETS = { '': { epiSun: false, ascSun: false, corpusSun: false }, es: { epiSun: false, ascSun: true, corpusSun: true }, hk: { epiSun: true, ascSun: true, corpusSun: true } };
+const PRESETS = { '': { epiSun: false, ascSun: false, corpusSun: false }, es: { epiSun: false, ascSun: true, corpusSun: true } };
 let S = Object.assign({ region: 'es', epiSun: false, ascSun: true, corpusSun: true, usarComun: true, fs: 19, showKeys: false, ciclo: 'anual' }, store.get('settings', {}));
+if (S.region !== '' && S.region !== 'es') S.region = 'es';
 let custom = store.get('custom', []);
 let sel = store.get('sel', {});
 const now = new Date();
@@ -1236,26 +1237,39 @@ $('#packClear').onclick = async () => { for (const v of [1, 2, 3, 4]) await idb.
 applyFs();
 render();
 (async () => {
-  const TOMOS_VERSION = '2026-10-23';
+  // 1) Abrir al instante con los tomos guardados en el dispositivo
   let any = false;
-  const fresh = store.get('tomosVersion', null) === TOMOS_VERSION;
-  if (fresh) for (const v of [1, 2, 3, 4]) { const j = await idb.get('vol' + v); if (j && j.p) { BOOK.load(j); any = true; } }
-  if (any) { render(); return; }
-  if (!location.protocol.startsWith('http')) return;
-  // Primera vez (o tomos nuevos): se descargan los tomos incluidos con la aplicación y se guardan en el dispositivo
+  for (const v of [1, 2, 3, 4]) { const j = await idb.get('vol' + v); if (j && j.p) { BOOK.load(j); any = true; } }
+  if (any) render();
+  if (!location.protocol.startsWith('http') || !navigator.onLine) return;
+  // 2) Con conexión: comprobar en segundo plano si algún tomo ha cambiado en el servidor
+  const firma = r => r.headers.get('ETag') || [r.headers.get('Last-Modified'), r.headers.get('Content-Length')].join('|');
+  const firmas = store.get('tomosFirmas', {});
   const el = $('#hour');
-  let ok = 0;
+  let changed = 0;
   for (const v of [1, 2, 3, 4]) {
-    el.innerHTML = `<div class="empty">Preparando los textos para usarlos sin conexión… (tomo ${v} de 4)</div>`;
+    const url = `tomos/tomo-${v}.json`;
     try {
-      const r = await fetch(`tomos/tomo-${v}.json`, { cache: 'no-cache' });
+      const head = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+      if (!head.ok) continue;
+      const f = firma(head);
+      if (any && firmas[v] === f && BOOK.loaded().includes(v)) continue;
+      if (!any) el.innerHTML = `<div class="empty">Preparando los textos para usarlos sin conexión… (tomo ${v} de 4)</div>`;
+      const r = await fetch(url, { cache: 'no-store' });
       if (!r.ok) continue;
       const j = await r.json();
-      BOOK.load(j); if (await idb.set('vol' + v, j)) ok++;
+      BOOK.load(j);
+      if (await idb.set('vol' + v, j)) { firmas[v] = firma(r) || f; changed++; }
     } catch {}
   }
-  if (ok === 4) store.set('tomosVersion', TOMOS_VERSION);
-  render();
+  store.set('tomosFirmas', firmas);
+  if (changed) {
+    render();
+    if (any) {
+      const n = document.createElement('p'); n.className = 'note'; n.textContent = 'Textos actualizados.';
+      $('#notes').appendChild(n); setTimeout(() => n.remove(), 4000);
+    }
+  }
 })();
 })();
 
