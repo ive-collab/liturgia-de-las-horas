@@ -160,23 +160,12 @@ select,input[type=text],input[type=date]{background:var(--paper);border:1px soli
 <dialog id="setDlg">
   <h3>Ajustes <button class="x" id="sClose" aria-label="Cerrar">×</button></h3>
   <h4>Calendario</h4>
-  <div class="row"><label for="region">Calendario particular</label>
-    <select id="region"><option value="">Universal</option><option value="es">España</option></select></div>
+  <div class="row"><label for="region">País</label><select id="region"></select></div>
+  <p class="hint" id="regionNote"></p>
   <div class="row"><label for="epiSun">Epifanía en domingo</label><input type="checkbox" id="epiSun"></div>
   <div class="row"><label for="ascSun">Ascensión en domingo</label><input type="checkbox" id="ascSun"></div>
   <div class="row"><label for="corpusSun">Corpus Christi en domingo</label><input type="checkbox" id="corpusSun"></div>
   <div class="row"><label for="usarComun">En las memorias, tomar del común lo que no sea propio</label><input type="checkbox" id="usarComun"></div>
-  <h4>Calendario propio</h4>
-  <p class="hint">Para fiestas del Instituto, de la diócesis o de la comunidad. Se suman al calendario elegido.</p>
-  <div class="list" id="customList"></div>
-  <div class="form">
-    <input type="text" id="cName" class="full" placeholder="Nombre de la celebración">
-    <input type="date" id="cDate" aria-label="Fecha (se usa día y mes)">
-    <select id="cRank"><option value="S">Solemnidad</option><option value="F">Fiesta</option><option value="M">Memoria obligatoria</option><option value="L" selected>Memoria libre</option></select>
-    <select id="cColor"><option value="b">Blanco</option><option value="r">Rojo</option><option value="m">Morado</option><option value="v">Verde</option></select>
-    <input type="text" id="cComun" placeholder="Común (opcional)">
-    <button class="btn full" id="cAdd">Añadir celebración</button>
-  </div>
   <h4>Tomos de la Liturgia de las Horas</h4>
   <div class="vols" id="volList"></div>
   <div class="row" style="flex-wrap:wrap">
@@ -191,6 +180,7 @@ select,input[type=text],input[type=date]{background:var(--paper);border:1px soli
   <div class="row"><label for="showKeys">Mostrar claves de los textos</label><input type="checkbox" id="showKeys"></div>
 </dialog>
 
+<script src="calendarios.js"></script>
 <script>
 const LH = (() => {
 const DAY = 86400000;
@@ -460,16 +450,53 @@ const GENERAL = `
 12-31|L|b|San Silvestre I, papa
 `;
 
-// Propio de España (parcial). "reemplaza" = nombre del calendario general sustituido
-const ESPANA = `
-02-14|F|b|Santos Cirilo, monje, y Metodio, obispo, patronos de Europa|Santos Cirilo, monje, y Metodio, obispo
-04-29|F|b|Santa Catalina de Siena, virgen y doctora, patrona de Europa|Santa Catalina de Siena, virgen y doctora
-07-11|F|b|San Benito, abad, patrono de Europa|San Benito, abad
-07-23|F|b|Santa Brígida, religiosa, patrona de Europa|Santa Brígida, religiosa
-07-25|S|r|Santiago, apóstol, patrono de España|Santiago, apóstol
-08-09|F|r|Santa Teresa Benedicta de la Cruz, virgen y mártir, patrona de Europa|Santa Teresa Benedicta de la Cruz, virgen y mártir
-10-12|F|b|Nuestra Señora del Pilar|
-`;
+// Calendarios nacionales: capas sobre el calendario general (datos en calendarios.js, de gcatholic.org)
+const CAL = typeof CALENDARIOS !== 'undefined' ? CALENDARIOS.paises : {};
+const RNK = { S: 'S', F: 'F', M: 'M', m: 'L' };
+const nrmN = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const STOPN = new Set(['san','santa','santo','santos','santas','la','el','los','las','de','del','y','e','virgen','martir','martires','obispo','obispos','presbitero','presbiteros','doctor','doctora','iglesia','papa','religioso','religiosa','abad','companeros','apostol','apostoles','diacono','monje','beato','beata','bienaventurada','nuestra','senora','maria','padres']);
+const tokN = s => new Set(nrmN(s).split(/[^a-z0-9]+/).filter(w => w.length > 2 && !STOPN.has(w)));
+function matchGen(list, md, name) {
+  const c = list.filter(g => g.md === md && !g.national);
+  if (!c.length) return null;
+  const t = tokN(name); let best = null, bs = 0;
+  for (const g of c) { let sc = 0; for (const w of tokN(g.name)) if (t.has(w)) sc++; if (sc > bs) { bs = sc; best = g; } }
+  return best || (c.length === 1 && /virgen mar|senora|^santa maria/i.test(nrmN(name)) === /virgen mar|senora|^santa maria/i.test(nrmN(c[0].name)) ? c[0] : null);
+}
+function colorFor(n) { const x = nrmN(n); return /martir|apostol|cruz$|exaltacion de la santa cruz|la santa cruz/.test(x) && !/reina de los martires/.test(x) ? 'r' : 'b'; }
+function comunFor(n) {
+  const x = nrmN(n);
+  if (/sumo y eterno sacerdote|cristo|senor de los milagros|cruz/.test(x)) return undefined;
+  if (/nuestra senora|virgen maria|^maria,|^maria |madre del divino|auxili|medalla milagrosa|inmaculado corazon|expectacion|reina de la paz|santa maria la antigua|santa maria junto|dolorosa|^santisima virgen|^beata virgen/.test(x)) return 'santisima-virgen';
+  if (/martires/.test(x)) return 'varios-martires';
+  if (/martir/.test(x)) return 'un-martir';
+  if (/obispo|papa|presbitero/.test(x)) return 'pastores';
+  if (/religios/.test(x)) return 'religiosos';
+  if (/virgen/.test(x)) return 'virgenes';
+  return /^(santa|beata)\b/.test(x) ? 'santas-mujeres' : 'santos-varones';
+}
+function applyCountry(list, code) {
+  const cal = CAL[code]; const mov = [], movRank = {};
+  if (!cal) return { list, mov, movRank };
+  list = list.slice();
+  const strong = new Set(cal.cambios.filter(e => (e.op === 'add' || e.op === 'move') && e.date && e.rank !== 'm').map(e => e.date));
+  for (const e of cal.cambios) {
+    const r = RNK[e.rank] || 'L';
+    const nat = { r, color: colorFor(e.es), name: e.es, proper: true, national: true, comun: comunFor(e.es) };
+    if (e.easterOffset != null) {
+      if (e.op === 'add') mov.push({ off: e.easterOffset, ...nat });
+      else if (e.op === 'rank') movRank[nrmN(e.es).includes('inmaculado corazon') ? 'immHeart' : nrmN(e.es)] = r;
+      continue;
+    }
+    if (e.op === 'add') { list.push({ md: e.date, ...nat }); continue; }
+    const g = matchGen(list, e.op === 'move' ? e.genDate : e.date, e.es);
+    if (e.op === 'remove') { if (g && !strong.has(e.date)) list = list.filter(x => x !== g); continue; }
+    if (!g) { list.push({ md: e.date, ...nat }); continue; }
+    list = list.map(x => x === g ? { ...g, md: e.date, r, proper: true, national: true } : x);
+  }
+  return { list, mov, movRank };
+}
+const countryTransfers = code => (CAL[code] && CAL[code].traslados) || null;
 
 // Santos añadidos al calendario después de la edición de 2013: común que se usa mientras no haya propio
 const COMUN_POR_NOMBRE = {
@@ -488,7 +515,6 @@ const parseLines = (txt, proper) => txt.trim().split('\n').map(l => {
   return { md, r, color: c, name, repl: repl || null, proper };
 });
 const GEN = parseLines(GENERAL, false);
-const ESP = parseLines(ESPANA, true);
 
 function precOf(r, proper) {
   return { S: proper ? 4 : 3, D: 3, FL: 5, F: proper ? 8 : 7, M: proper ? 11 : 10, L: 12 }[r];
@@ -569,20 +595,13 @@ function temporal(t, S) {
 }
 
 const yCache = {};
-function buildYear(y, S, custom) {
-  const sig = `${y}|${JSON.stringify(S)}|${JSON.stringify(custom)}`;
+function buildYear(y, S) {
+  const sig = `${y}|${JSON.stringify(S)}`;
   if (yCache[y] && yCache[y].sig === sig) return yCache[y];
   const days = {};
   for (let t = D(y, 1, 1); t <= D(y, 12, 31); t += DAY) days[iso(t)] = { t, temp: temporal(t, S), fixed: [] };
   const A = anchors(y, S);
-  let list = GEN.slice();
-  if (S.region === 'es') {
-    for (const e of ESP) { if (e.repl) list = list.filter(g => !(g.md === e.md && g.name === e.repl)); list.push(e); }
-  }
-  for (const c of (custom || [])) {
-    if (c.replace) list = list.filter(g => !(g.md === c.md && g.name === c.replace));
-    list.push({ md: c.md, r: c.r, color: c.color || 'b', name: c.name, proper: true, comun: c.comun });
-  }
+  const { list, mov, movRank } = applyCountry(GEN, S.region);
   const mk = (e, t) => ({
     name: e.name, r: e.r, prec: precOf(e.r, e.proper), color: e.color, colorName: COLOR[e.color],
     key: e.key || `santos/${e.md}/${slug(e.name)}`, proper: !!e.proper, md: e.md, comun: e.comun || COMUN_POR_NOMBRE[e.name]
@@ -590,8 +609,11 @@ function buildYear(y, S, custom) {
   const place = (t, c) => { const k = iso(t); if (days[k]) days[k].fixed.push(c); };
   // móviles del santoral
   place(A.motherChurch, { ...mk({ name: 'La Bienaventurada Virgen María, Madre de la Iglesia', r: 'M', color: 'b', key: 'movil/madre-de-la-iglesia' }), mother: true });
-  place(A.immHeart, { ...mk({ name: 'El Inmaculado Corazón de la Virgen María', r: 'M', color: 'b', key: 'movil/inmaculado-corazon' }), immHeart: true });
-  if (S.region === 'es') place(A.priest, mk({ name: 'Jesucristo, Sumo y Eterno Sacerdote', r: 'F', color: 'b', key: 'movil/sumo-sacerdote', proper: true }));
+  { const r = movRank.immHeart || 'M'; place(A.immHeart, { ...mk({ name: 'El Inmaculado Corazón de la Virgen María', r, color: 'b', key: 'movil/inmaculado-corazon', proper: r !== 'M' }), immHeart: true }); }
+  for (const m of mov) {
+    const key = /sumo y eterno sacerdote/i.test(m.name) ? 'movil/sumo-sacerdote' : `movil/${slug(m.name)}`;
+    place(A.E + m.off * DAY, mk({ ...m, key, md: mdOf(A.E + m.off * DAY) }));
+  }
   const occupied = t => { const k = iso(t); const dd = days[k]; if (!dd) return false; return dd.temp.prec <= 8 || dd.fixed.some(f => f.prec <= 8); };
   const pending = [];
   for (const e of list) {
@@ -615,9 +637,9 @@ function buildYear(y, S, custom) {
 
 const RANK = { 1: '', 2: '', 3: 'Solemnidad', 4: 'Solemnidad', 5: 'Fiesta', 6: 'Domingo', 7: 'Fiesta', 8: 'Fiesta', 9: '', 10: 'Memoria obligatoria', 11: 'Memoria obligatoria', 12: 'Memoria libre', 13: 'Feria' };
 
-function day(t, S, custom) {
+function day(t, S) {
   const [y] = ymd(t);
-  const Y = buildYear(y, S, custom);
+  const Y = buildYear(y, S);
   const dd = Y.days[iso(t)];
   const temp = dd.temp;
   const tOpt = { name: temp.name, prec: temp.prec, color: temp.color, colorName: temp.colorName, key: temp.id, type: 'temporal',
@@ -659,7 +681,7 @@ function cycles(t, S) {
   return { dominical: ['C', 'A', 'B'][ly % 3], ferial: ly % 2 ? 'I' : 'II' };
 }
 
-return { day, temporal, anchors, easter, iso, fromIso, D, DAY, ymd, dow, WD, MESES, slug, roman, pad, mdOf };
+return { day, temporal, anchors, easter, iso, fromIso, D, DAY, ymd, dow, WD, MESES, slug, roman, pad, mdOf, countries: () => CAL, countryTransfers };
 })();
 
 
@@ -910,6 +932,17 @@ function compose(day, opt, hour, S, nextDay, nextOpt) {
   }
   if (!(isCel && cel && !mem) || true) {
     if (tSec) srcs.push({ v: tSec.v, parts: parts(tSec.v, hourRange(tSec.sec, h), h), label: 'Propio del tiempo' });
+    // Domingo IV de Adviento (17-24 dic.) y Domingo II después de Navidad: el libro remite
+    // «el versículo, las lecturas y los responsorios» al día correspondiente del mes.
+    if (h === 'ol' && tSec) {
+      const tp = parts(tSec.v, hourRange(tSec.sec, 'ol'), 'ol');
+      if (tp && !tp.l1) {
+        const [, mm, dd] = LH.ymd(d.t);
+        const alt = mm === 12 && dd >= 17 ? `T:dic-${dd}` : (mm === 1 && dd >= 2 && dd <= 5 ? `T:ene-${String(dd).padStart(2, '0')}` : null);
+        const f = alt && alt !== tSec.k ? findSec([alt], v0) : null;
+        if (f) srcs.push({ v: f.v, parts: parts(f.v, hourRange(f.sec, 'ol'), 'ol'), label: 'Del día del mes', only: ['verso', 'l1', 'l2'] });
+      }
+    }
     const tc = tcKey(d); if (tc) srcs.push({ v: tc.v, parts: parts(tc.v, hourRange(tc.sec, h === 'v1' ? 'v' : h), h), label: 'Textos comunes del tiempo', exclude: ['oracion'] });
     if (pSec) srcs.push({ v: pSec.v, parts: parts(pSec.v, hourRange(pSec.sec, h), h), label: 'Salterio' });
   }
@@ -985,10 +1018,12 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem('lh.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem('lh.' + k, JSON.stringify(v)); } catch {} }
 };
-const PRESETS = { '': { epiSun: false, ascSun: false, corpusSun: false }, es: { epiSun: false, ascSun: true, corpusSun: true } };
-let S = Object.assign({ region: 'es', epiSun: false, ascSun: true, corpusSun: true, usarComun: true, fs: 19, showKeys: false, ciclo: 'anual' }, store.get('settings', {}));
-if (S.region !== '' && S.region !== 'es') S.region = 'es';
-let custom = store.get('custom', []);
+const PAISES = LH.countries();
+const preset = code => { const t = LH.countryTransfers(code); return t ? { epiSun: t.epiphanyToSunday, ascSun: t.ascensionToSunday, corpusSun: t.corpusToSunday } : { epiSun: false, ascSun: false, corpusSun: false }; };
+let S = Object.assign({ region: 'ES', epiSun: false, ascSun: true, corpusSun: true, usarComun: true, fs: 19, showKeys: false, ciclo: 'anual' }, store.get('settings', {}));
+if (S.region === 'es') S.region = 'ES';                       // ajustes de la versión anterior
+if (S.region !== '' && !PAISES[S.region]) S.region = 'ES';
+try { localStorage.removeItem('lh.custom'); } catch {}         // ya no hay celebraciones añadidas por el usuario
 let sel = store.get('sel', {});
 const now = new Date();
 let cur = LH.D(now.getFullYear(), now.getMonth() + 1, now.getDate());
@@ -1007,8 +1042,8 @@ function autoHour() { const h = new Date().getHours(); return h < 5 ? 'c' : h < 
 const HOURS = [['inv', 'Invitatorio'], ['ol', 'Oficio de lectura'], ['l', 'Laudes'], ['hi', 'Hora intermedia'], ['v', 'Vísperas'], ['c', 'Completas']];
 const LC = { b: 'var(--lc-b)', r: 'var(--lc-r)', m: 'var(--lc-m)', v: 'var(--lc-v)', o: 'var(--lc-o)' };
 const SEASON = { adviento: 'Adviento', navidad: 'Navidad', ordinario: 'Tiempo ordinario', cuaresma: 'Cuaresma', 'semana-santa': 'Semana Santa', triduo: 'Triduo pascual', pascua: 'Pascua' };
-const engineSettings = () => ({ region: S.region === 'es' ? 'es' : '', epiSun: S.epiSun, ascSun: S.ascSun, corpusSun: S.corpusSun });
-const getDay = t => LH.day(t, engineSettings(), custom);
+const engineSettings = () => ({ region: S.region, epiSun: S.epiSun, ascSun: S.ascSun, corpusSun: S.corpusSun });
+const getDay = t => LH.day(t, engineSettings());
 const optId = o => o.key || ('temporal:' + o.name);
 function chosen(d) { const id = sel[d.iso]; return d.options.find(o => optId(o) === id) || d.options[0]; }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -1197,26 +1232,26 @@ function volStatus() {
   const L = BOOK.loaded();
   $('#volList').innerHTML = [1, 2, 3, 4].map(v => `<div><span>Tomo ${VOLNAMES[v]}</span><span style="color:${L.includes(v) ? 'var(--ink)' : 'var(--muted)'}">${L.includes(v) ? 'cargado' : 'falta'}</span></div>`).join('');
 }
-function renderCustom() {
-  $('#customList').innerHTML = custom.length ? custom.map((c, i) => `<div><span>${esc(c.md)} ${esc(c.name)} <span style="color:var(--muted)">(${{ S: 'solemnidad', F: 'fiesta', M: 'memoria', L: 'memoria libre' }[c.r]})</span></span><button data-i="${i}">Quitar</button></div>`).join('') : '<p class="hint">Sin celebraciones propias.</p>';
-  $('#customList').querySelectorAll('button').forEach(b => b.onclick = () => { custom.splice(+b.dataset.i, 1); store.set('custom', custom); renderCustom(); render(); });
+function fillRegions() {
+  const opts = Object.entries(PAISES).sort((x, y) => x[1].nombre.localeCompare(y[1].nombre, 'es'));
+  $('#region').innerHTML = opts.map(([k, p]) => `<option value="${k}">${esc(p.nombre)}</option>`).join('') + '<option value="">Calendario romano general</option>';
+}
+function regionNote() {
+  const p = PAISES[S.region];
+  $('#regionNote').textContent = !S.region ? 'Solo el calendario romano general, sin celebraciones nacionales.'
+    : p && p.sinDatos ? `Todavía no está incluido el calendario propio de ${p.nombre}: se usa el calendario romano general. Ajuste los traslados según su Conferencia Episcopal.`
+    : `Calendario propio de ${p.nombre}. Traslados a domingo según su Conferencia Episcopal.`;
 }
 function openSettings() {
-  $('#region').value = S.region; ['epiSun', 'ascSun', 'corpusSun', 'usarComun', 'showKeys'].forEach(k => $('#' + k).checked = !!S[k]);
-  $('#fs').value = S.fs; $('#ciclo').value = S.ciclo; renderCustom(); volStatus(); $('#setDlg').showModal();
+  fillRegions(); $('#region').value = S.region; ['epiSun', 'ascSun', 'corpusSun', 'usarComun', 'showKeys'].forEach(k => $('#' + k).checked = !!S[k]);
+  $('#fs').value = S.fs; $('#ciclo').value = S.ciclo; regionNote(); volStatus(); $('#setDlg').showModal();
 }
 $('#setBtn').onclick = openSettings;
 $('#sClose').onclick = () => $('#setDlg').close();
-$('#region').onchange = e => { S.region = e.target.value; Object.assign(S, PRESETS[S.region]); ['epiSun', 'ascSun', 'corpusSun'].forEach(k => $('#' + k).checked = S[k]); saveS(); };
+$('#region').onchange = e => { S.region = e.target.value; Object.assign(S, preset(S.region)); regionNote(); ['epiSun', 'ascSun', 'corpusSun'].forEach(k => $('#' + k).checked = S[k]); saveS(); };
 ['epiSun', 'ascSun', 'corpusSun', 'usarComun', 'showKeys'].forEach(k => $('#' + k).onchange = e => { S[k] = e.target.checked; saveS(); });
 $('#fs').oninput = e => { S.fs = +e.target.value; saveS(); };
 $('#ciclo').onchange = e => { S.ciclo = e.target.value; saveS(); };
-$('#cAdd').onclick = () => {
-  const name = $('#cName').value.trim(), dt = $('#cDate').value;
-  if (!name || !dt) { $('#cName').focus(); return; }
-  custom.push({ md: dt.slice(5), name, r: $('#cRank').value, color: $('#cColor').value, comun: $('#cComun').value.trim() || undefined });
-  store.set('custom', custom); $('#cName').value = ''; $('#cComun').value = ''; renderCustom(); render();
-};
 $('#packFile').onchange = async e => {
   const files = [...e.target.files], errs = [];
   $('#packStatus').textContent = 'Cargando…';

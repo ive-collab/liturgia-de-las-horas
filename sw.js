@@ -1,7 +1,7 @@
 // Service worker: guarda la aplicación para usarla sin conexión.
 // Los tomos se descargan una sola vez de la carpeta tomos/ y se guardan en IndexedDB.
-const VERSION = 'horas-v2';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png'];
+const VERSION = 'horas-v3';
+const SHELL = ['./', './index.html', './manifest.webmanifest', './calendarios.js', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
