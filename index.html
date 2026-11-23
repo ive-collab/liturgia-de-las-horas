@@ -119,6 +119,9 @@ select,input[type=text],input[type=date]{background:var(--paper);border:1px soli
 .bk .ref{border-left:2px solid var(--rule);padding-left:.8rem;margin:.4rem 0 .8rem}
 .bk .alt{font-size:.8em;color:var(--muted);margin:.2rem 0 .6rem}
 .bk .alt button{background:var(--chip);border:0;border-radius:6px;padding:.15rem .5rem;margin:.1rem .2rem;cursor:pointer;color:var(--ink);font-size:1em}
+.bk .alt-tabs{display:flex;flex-wrap:wrap;gap:.3rem;justify-content:center;margin:.2rem 0 .7rem}
+.bk .alt-tabs button{background:var(--chip);border:0;border-radius:999px;padding:.28rem .75rem;cursor:pointer;color:var(--muted);font:inherit;font-size:.78em;line-height:1.3}
+.bk .alt-tabs button[aria-selected="true"]{background:var(--rubric);color:#fff}
 .bk .src{font-size:.72em;color:var(--muted);text-align:center;margin:-.3rem 0 .4rem;font-variant:normal;letter-spacing:0}
 .bk .conm{margin:2rem 0 .3rem;text-align:center;color:var(--rubric);font-style:italic}
 .vols{font-size:.88em;margin:.3rem 0}
@@ -166,14 +169,7 @@ select,input[type=text],input[type=date]{background:var(--paper);border:1px soli
   <div class="row"><label for="ascSun">Ascensión en domingo</label><input type="checkbox" id="ascSun"></div>
   <div class="row"><label for="corpusSun">Corpus Christi en domingo</label><input type="checkbox" id="corpusSun"></div>
   <div class="row"><label for="usarComun">En las memorias, tomar del común lo que no sea propio</label><input type="checkbox" id="usarComun"></div>
-  <h4>Tomos de la Liturgia de las Horas</h4>
-  <div class="vols" id="volList"></div>
-  <div class="row" style="flex-wrap:wrap">
-    <label class="btn" style="flex:none;text-align:center" for="packFile">Cargar tomos (JSON)</label>
-    <input type="file" id="packFile" accept=".json,application/json" multiple hidden>
-    <button class="btn danger" id="packClear">Quitar tomos</button>
-  </div>
-  <p class="hint" id="packStatus">Los tomos se guardan en este dispositivo y funcionan sin conexión.</p>
+  <h4>Oficio de lectura</h4>
   <div class="row"><label for="ciclo">Primera lectura del Oficio</label><select id="ciclo"><option value="anual">Ciclo anual</option><option value="bienal">Ciclo bienal</option><option value="todo">Mostrar ambos</option></select></div>
   <h4>Lectura</h4>
   <div class="row"><label for="fs">Tamaño del texto</label><input type="range" id="fs" min="15" max="26" step="1"></div>
@@ -952,6 +948,11 @@ function compose(day, opt, hour, S, nextDay, nextOpt) {
     if (vv) srcs.push({ v: vv, parts: { oracion: [vols[vv].otp[d.temp.week]], _order: ['oracion'] }, label: 'Oración del domingo', only: ['oracion'] });
   }
   let blocks = merge(h, srcs);
+  // Memorias sin segunda lectura propia: también puede leerse la del día
+  if (h === 'ol' && isCel && mem && tSec && !(celParts && celParts.l2)) {
+    const tp = parts(tSec.v, hourRange(tSec.sec, 'ol'), 'ol'), lb = blocks.find(b => b.k === 'l2');
+    if (tp && tp.l2 && lb && lb.src !== 'Propio del tiempo') lb.alts = [{ v: tSec.v, idx: tp.l2, label: 'Del día' }];
+  }
   if ((h === 'ol' || h === 'v' || h === 'v1') && !blocks.some(x => x.k === 'oracion') && hour !== 'l') {
     const lr = compose(d, o, 'l', S, null, null);
     const ob = lr.blocks.find(x => x.k === 'oracion'); if (ob) blocks.push({ ...ob, src: ob.src + ' (de Laudes)' });
@@ -1006,7 +1007,38 @@ function psalm94(v0) {
   }
   return null;
 }
-return { psalm94, load, has, loaded, vols: () => vols, compose, refTarget, seasonVol, txt, nrm };
+// Invitatorio: salmo 94 o, en su lugar, 99, 66 o 23
+function invPsalms(v0) {
+  for (const v of volOrder(v0)) {
+    const s = vols[v].sec.O; if (!s) continue; const P = vols[v].p, out = [];
+    for (let i = s.s; i < s.e; i++) if (P[i][0] === 'ps' && /^Salmo (94|99|66|23)\b/.test(txt(P[i][1]))) {
+      let e = i + 1; while (e < s.e && !['ps', 'l', 'h', 'hh'].includes(P[e][0])) e++;
+      while (e > i + 1 && P[e - 1][0] === 'r' && !/^Se repite/i.test(txt(P[e - 1][1]))) e--;
+      out.push({ label: txt(P[i][1]).match(/^Salmo \d+/)[0], v, idx: range(i, e) });
+    }
+    if (out.length) return out;
+  }
+  return [];
+}
+// Salmodia complementaria de la Hora intermedia: series I (Tercia), II (Sexta), III (Nona)
+function complementaria() {
+  for (const v of [3, 4, 1, 2]) {
+    if (!vols[v] || !vols[v].sec.SC) continue;
+    const s = vols[v].sec.SC, P = vols[v].p;
+    const marks = []; for (let i = s.s; i < s.e; i++) if (/^Serie (I{1,3})\b/.test(txt(P[i][1]))) marks.push(i);
+    if (marks.length < 3) continue;
+    return marks.slice(0, 3).map((m, n) => ({ label: txt(P[m][1]), v, idx: range(m + 1, n < 2 ? marks[n + 1] : s.e) }));
+  }
+  return [];
+}
+// Salmodia del día (Salterio) para la Hora intermedia
+function hiSalterio(day) {
+  const pSec = findSec([`P:${day.temp.psalter}/${day.temp.dow}`], seasonVol(day));
+  if (!pSec) return null;
+  const pp = parts(pSec.v, hourRange(pSec.sec, 'hi'), 'hi');
+  return pp && pp.salmodia ? { v: pSec.v, idx: pp.salmodia } : null;
+}
+return { psalm94, invPsalms, complementaria, hiSalterio, load, has, loaded, vols: () => vols, compose, refTarget, seasonVol, txt, nrm };
 })();
 
 
@@ -1029,7 +1061,6 @@ const now = new Date();
 let cur = LH.D(now.getFullYear(), now.getMonth() + 1, now.getDate());
 let hour = autoHour();
 let monthCursor = null;
-const VOLNAMES = { 1: 'I · Adviento y Navidad', 2: 'II · Cuaresma y Pascua', 3: 'III · Tiempo ordinario, semanas I–XVII', 4: 'IV · Tiempo ordinario, semanas XVIII–XXXIV' };
 
 const idb = {
   open() { return new Promise((res, rej) => { const r = indexedDB.open('lh', 2); r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains('kv')) r.result.createObjectStore('kv'); }; r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
@@ -1124,11 +1155,43 @@ function renderRef(v, tgt, ctx, depth) {
   return renderIdx(v, idx.filter(i => !/^(V\.\s*Dios mío, ven en mi auxilio|R\.\s*Señor, date prisa)/.test(BOOK.txt(BOOK.vols()[v].p[i][1]))), ctx, depth);
 }
 
+// ---------- alternativas en pestañas ----------
+const altSel = {};   // elección recordada durante la sesión (invitatorio, hora intermedia)
+function altTabs(key, items, def) {
+  const sel = altSel[key] != null && altSel[key] < items.length ? altSel[key] : (def || 0);
+  return `<div class="alt-tabs" role="tablist">${items.map((it, n) => `<button role="tab" data-g="${esc(key)}" data-n="${n}" aria-selected="${n === sel}">${esc(it.label)}</button>`).join('')}</div>`
+    + items.map((it, n) => `<div class="alt-pane" data-g="${esc(key)}" data-n="${n}"${n === sel ? '' : ' hidden'}>${it.html}</div>`).join('');
+}
+function readingLabel(v, idx, fallback) {
+  const P = BOOK.vols()[v].p;
+  for (const i of idx) {
+    const t = BOOK.txt(P[i][1]).trim();
+    if (!/^(De|Del)\s/.test(t)) continue;
+    const m = t.match(/\b((?:san|santa|santo|beato|beata|papa)\s+[^,]+)/i);
+    let x = m ? m[1] : t.replace(/^(De|Del)\s+((los|las|la|el)\s+)?/i, '').split(',')[0];
+    x = x.charAt(0).toUpperCase() + x.slice(1);
+    return x.length > 40 ? x.slice(0, 38).trim() + '…' : x;
+  }
+  return fallback;
+}
+// Divide una segunda lectura en las alternativas que el libro propone con «O bien…»
+function splitReadings(v, idx) {
+  const P = BOOK.vols()[v].p, T = i => BOOK.txt(P[i][1]).trim(), head = [], panes = [[]];
+  let i = 0; while (i < idx.length && P[idx[i]][0] === 'l') head.push(idx[i++]);
+  for (; i < idx.length; i++) {
+    const k = idx[i];
+    const startsNew = P[k][0] === 'r' && /^O bien\b/i.test(T(k)) && panes[panes.length - 1].length
+      && idx.slice(i + 1, i + 4).some(j => /^(De|Del)\s/.test(T(j)));
+    if (startsNew) { panes.push([]); if (/^O bien( esta otra)?:?$/i.test(T(k))) continue; }
+    panes[panes.length - 1].push(k);
+  }
+  return { head, panes: panes.filter(p => p.length) };
+}
 function renderHour() {
   const el = $('#hour');
   if (!BOOK.has()) {
-    el.innerHTML = `<div class="empty">Faltan los textos. Cargue los cuatro tomos (archivos JSON) desde Ajustes; quedan guardados en este dispositivo.<br><br><button id="goSet">Cargar tomos</button></div>`;
-    $('#goSet').onclick = openSettings; return;
+    el.innerHTML = `<div class="empty">Preparando los textos… Se necesita conexión a internet la primera vez; después la aplicación funciona sin conexión.</div>`;
+    return;
   }
   const d = getDay(cur), o = chosen(d), n = getDay(cur + LH.DAY), no = chosen(n);
   const r = BOOK.compose(d, o, hour, { ...engineSettings(), usarComun: S.usarComun }, n, no);
@@ -1140,14 +1203,60 @@ function renderHour() {
   if (h === 'inv') out.push(fixed(ORD.inv));
   else if (h !== 'c' || true) out.push(fixed(ORD.intro + (lent ? '' : '\nAleluya.')));
   if (!r.blocks.length) out.push(`<div class="empty">No se encontró esta hora en los tomos cargados${BOOK.loaded().includes(BOOK.seasonVol(r.ctx.d)) ? '' : ` (falta el tomo ${['', 'I', 'II', 'III', 'IV'][BOOK.seasonVol(r.ctx.d)]})`}.</div>`);
-  for (const b of r.blocks) {
-    if (b.k === 'conm') { out.push(`<p class="conm">${esc(b.title)}</p>`); continue; }
+  r.blocks.forEach((b, bi) => {
+    if (b.k === 'conm') { out.push(`<p class="conm">${esc(b.title)}</p>`); return; }
     const part = b.k.replace(/\+$/, '');
     const idx = filterReadings(b.v, b.idx, part);
+    const P = BOOK.vols()[b.v].p;
+    // Segunda lectura con varias propuestas
+    if (part === 'l2') {
+      const sp = splitReadings(b.v, idx);
+      const items = sp.panes.map(pn => ({ v: b.v, idx: pn, pre: '' }));
+      for (const a of (b.alts || [])) splitReadings(a.v, a.idx).panes.forEach(pn => items.push({ v: a.v, idx: pn, pre: a.label }));
+      if (items.length > 1) {
+        out.push(`<div data-block="${esc(b.k)}">${renderIdx(b.v, sp.head, { h, part }, 0)}${altTabs(`l2:${r.ctx.d.iso}:${bi}`, items.map((it, n) => ({
+          label: (it.pre ? it.pre + ' · ' : '') + readingLabel(it.v, it.idx, 'Lectura ' + (n + 1)),
+          html: renderIdx(it.v, it.idx, { h, part }, 0) })))}</div>`);
+        if (S.showKeys) out.push(`<p class="src">${esc(b.k)} · tomo ${b.v} · ${esc(b.src || '')}</p>`);
+        return;
+      }
+    }
+    // Hora intermedia: salmodia del día o complementaria
+    if (h === 'hi' && b.k === 'raw') {
+      const comp = BOOK.complementaria(), T = i => BOOK.txt(P[i][1]);
+      let before, own, after, label = '';
+      const sI = idx.findIndex(i => P[i][0] === 'l' && P[i][2] === 'salmodia');
+      if (sI >= 0) {
+        let eI = sI + 1; while (eI < idx.length && P[idx[eI]][0] !== 'l') eI++;
+        before = idx.slice(0, sI + 1); own = idx.slice(sI + 1, eI); after = idx.slice(eI);
+      } else {
+        // solemnidades y fiestas: una rúbrica sobre la salmodia antes de Tercia
+        let eI = 0; while (eI < idx.length && P[idx[eI]][0] !== 'l') eI++;
+        const lead = idx.slice(0, eI);
+        if (lead.some(i => P[i][0] === 'r' && /salmodia|salmos/i.test(T(i)))) { before = []; own = lead; after = idx.slice(eI); label = '<div class="lab">SALMODIA</div>'; }
+      }
+      if (own && comp.length) {
+        const hasPs = own.some(i => P[i][0] === 'ps');
+        const refsComp = own.some(i => /complementaria/i.test(T(i)));
+        let day = { v: b.v, idx: own.filter(i => !(P[i][0] === 'r' && /complementaria/i.test(T(i)))) }, def = 0, rub = '';
+        if (!hasPs && refsComp) {
+          const ps = BOOK.hiSalterio(r.ctx.d); if (ps) day = ps; def = 1;
+          rub = `<p class="rb">${own.filter(i => P[i][0] === 'r').map(i => esc(T(i))).join(' ')}</p>`;
+        }
+        const items = [{ label: 'Del día', html: renderIdx(day.v, day.idx, { h, part: 'salmodia' }, 0) },
+          ...comp.map(c => ({ label: c.label.replace(/\s*\((\w+)\)/, ' · $1'), html: renderIdx(c.v, c.idx, { h, part: 'salmodia' }, 1) }))];
+        out.push(`<div data-block="raw">${renderIdx(b.v, before, { h, part }, 0)}${label}${rub}${altTabs(def ? 'hi-sol' : 'hi', items, def)}${renderIdx(b.v, after, { h, part }, 0)}</div>`);
+        if (S.showKeys) out.push(`<p class="src">${esc(b.k)} · tomo ${b.v} · ${esc(b.src || '')}</p>`);
+        return;
+      }
+    }
     out.push(`<div data-block="${esc(b.k)}">${renderIdx(b.v, idx, { h, part }, 0)}</div>`);
     if (S.showKeys) out.push(`<p class="src">${esc(b.k)} · tomo ${b.v} · ${esc(b.src || '')}</p>`);
+  });
+  if (h === 'inv') {
+    const ps = BOOK.invPsalms(BOOK.seasonVol(r.ctx.d));
+    if (ps.length) out.push(altTabs('inv', ps.map(p => ({ label: p.label, html: renderIdx(p.v, p.idx, { h, part: 'inv' }, 1) }))));
   }
-  if (h === 'inv') { const p = BOOK.psalm94(BOOK.seasonVol(r.ctx.d)); if (p) out.push(renderIdx(p.v, p.idx, { h, part: 'inv' }, 1)); }
   out.push(`<div class="lab">Conclusión</div>`);
   out.push(fixed(h === 'l' || h === 'v' || h === 'v1' ? ORD.mayor : h === 'c' ? ORD.comp : ORD.menor));
   el.innerHTML = `<div class="bk">${out.join('')}</div>`;
@@ -1163,6 +1272,13 @@ $('#hour').addEventListener('click', e => {
     box.innerHTML = renderRef(v, t, { h, part: a.dataset.part }, +a.dataset.d || 1);
     a.closest('p,div.lab').after(box);
     return;
+  }
+  const tb = e.target.closest('.alt-tabs button[data-g]');
+  if (tb) {
+    const g = tb.dataset.g, n = +tb.dataset.n, box = tb.parentElement.parentElement;
+    box.querySelectorAll(':scope > .alt-tabs > button').forEach(x => { if (x.dataset.g === g) x.setAttribute('aria-selected', String(+x.dataset.n === n)); });
+    box.querySelectorAll(':scope > .alt-pane').forEach(x => { if (x.dataset.g === g) x.hidden = +x.dataset.n !== n; });
+    altSel[g] = n; return;
   }
   const sw = e.target.closest('button[data-swap]');
   if (sw) {
@@ -1228,10 +1344,6 @@ $('#todayBtn').onclick = () => { const n2 = new Date(); cur = LH.D(n2.getFullYea
 // ---------- ajustes ----------
 function applyFs() { document.documentElement.style.setProperty('--fs', S.fs + 'px'); }
 function saveS() { store.set('settings', S); applyFs(); render(); }
-function volStatus() {
-  const L = BOOK.loaded();
-  $('#volList').innerHTML = [1, 2, 3, 4].map(v => `<div><span>Tomo ${VOLNAMES[v]}</span><span style="color:${L.includes(v) ? 'var(--ink)' : 'var(--muted)'}">${L.includes(v) ? 'cargado' : 'falta'}</span></div>`).join('');
-}
 function fillRegions() {
   const opts = Object.entries(PAISES).sort((x, y) => x[1].nombre.localeCompare(y[1].nombre, 'es'));
   $('#region').innerHTML = opts.map(([k, p]) => `<option value="${k}">${esc(p.nombre)}</option>`).join('') + '<option value="">Calendario romano general</option>';
@@ -1244,7 +1356,7 @@ function regionNote() {
 }
 function openSettings() {
   fillRegions(); $('#region').value = S.region; ['epiSun', 'ascSun', 'corpusSun', 'usarComun', 'showKeys'].forEach(k => $('#' + k).checked = !!S[k]);
-  $('#fs').value = S.fs; $('#ciclo').value = S.ciclo; regionNote(); volStatus(); $('#setDlg').showModal();
+  $('#fs').value = S.fs; $('#ciclo').value = S.ciclo; regionNote(); $('#setDlg').showModal();
 }
 $('#setBtn').onclick = openSettings;
 $('#sClose').onclick = () => $('#setDlg').close();
@@ -1252,22 +1364,6 @@ $('#region').onchange = e => { S.region = e.target.value; Object.assign(S, prese
 ['epiSun', 'ascSun', 'corpusSun', 'usarComun', 'showKeys'].forEach(k => $('#' + k).onchange = e => { S[k] = e.target.checked; saveS(); });
 $('#fs').oninput = e => { S.fs = +e.target.value; saveS(); };
 $('#ciclo').onchange = e => { S.ciclo = e.target.value; saveS(); };
-$('#packFile').onchange = async e => {
-  const files = [...e.target.files], errs = [];
-  $('#packStatus').textContent = 'Cargando…';
-  for (const f of files) {
-    try {
-      const j = JSON.parse(await f.text());
-      if (j.formato !== 'lh-libro/1' || !j.vol) throw 0;
-      BOOK.load(j);
-      if (!(await idb.set('vol' + j.vol, j))) errs.push(`tomo ${j.vol}: no se pudo guardar en el dispositivo`);
-    } catch { errs.push(`${f.name}: no es un tomo válido`); }
-  }
-  volStatus(); render();
-  $('#packStatus').textContent = errs.length ? errs.join('; ') : 'Tomos guardados en este dispositivo.';
-  e.target.value = '';
-};
-$('#packClear').onclick = async () => { for (const v of [1, 2, 3, 4]) await idb.del('vol' + v); location.reload(); };
 
 applyFs();
 render();

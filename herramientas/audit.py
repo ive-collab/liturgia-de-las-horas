@@ -36,7 +36,7 @@ try:
         pg = br.new_page(); errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
         pg.goto(f'http://localhost:{port}/index.html')
-        pg.wait_for_function('typeof BOOK !== "undefined" && BOOK.loaded().length === 4', timeout=180000)
+        pg.wait_for_function('typeof BOOK !== "undefined" && BOOK.loaded().length === 5', timeout=180000)
         res = pg.evaluate(JS, {'a': a, 'b': b})
         total = 0
         for k, v in res.items():
