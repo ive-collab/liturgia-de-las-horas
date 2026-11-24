@@ -122,6 +122,9 @@ select,input[type=text],input[type=date]{background:var(--paper);border:1px soli
 .bk .alt-tabs{display:flex;flex-wrap:wrap;gap:.3rem;justify-content:center;margin:.2rem 0 .7rem}
 .bk .alt-tabs button{background:var(--chip);border:0;border-radius:999px;padding:.28rem .75rem;cursor:pointer;color:var(--muted);font:inherit;font-size:.78em;line-height:1.3}
 .bk .alt-tabs button[aria-selected="true"]{background:var(--rubric);color:#fff}
+.bk .alt-tabs.hora-sel{margin:.4rem 0 1rem;gap:.5rem}
+.bk .alt-tabs.hora-sel button{font-size:.95em;padding:.45rem 1.1rem;font-weight:600;min-width:5.5rem}
+.bk .hora-pane-tit{margin:1.6rem 0 .3rem;text-align:center;color:var(--rubric);font-size:1.15em;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-top:1px solid var(--chip);padding-top:1rem}
 .bk .src{font-size:.72em;color:var(--muted);text-align:center;margin:-.3rem 0 .4rem;font-variant:normal;letter-spacing:0}
 .bk .conm{margin:2rem 0 .3rem;text-align:center;color:var(--rubric);font-style:italic}
 .vols{font-size:.88em;margin:.3rem 0}
@@ -753,6 +756,21 @@ function tcKey(day) {
   for (const v of volOrder(seasonVol(day))) for (const k of Object.keys(vols[v].sec)) if (k.startsWith(pre)) return { v, k, sec: vols[v].sec[k] };
   return null;
 }
+// Ordinario de Completas (examen de conciencia, himnos…): «Todo como en el Ordinario, excepto lo siguiente»
+const _ordC = {};
+function ordCompletas(v0) {
+  for (const v of volOrder(v0)) {
+    if (_ordC[v] !== undefined) { if (_ordC[v]) return _ordC[v]; continue; }
+    const P = vols[v].p; _ordC[v] = null;
+    for (let i = 0; i < P.length; i++) if (P[i][0] === 'hh' && /^Completas$/i.test(txt(P[i][1]).trim())) {
+      let j = i + 1; while (j < i + 6 && j < P.length && !(P[j][0] === 'l' && P[j][2] === 'examen')) j++;
+      if (j >= i + 6 || j >= P.length) continue;
+      let e = j; while (e < P.length && !['hh', 'h'].includes(P[e][0])) e++;
+      _ordC[v] = { v, r: [i + 1, e] }; return _ordC[v];
+    }
+  }
+  return null;
+}
 function findSec(keys, v0) {
   for (const k of keys) for (const v of volOrder(v0)) { const s = vols[v].sec[k]; if (s && (Object.keys(s.h || {}).length || !k.startsWith('T:'))) return { v, k, sec: s }; }
   return null;
@@ -880,6 +898,8 @@ function compose(day, opt, hour, S, nextDay, nextOpt) {
     if (d.temp.dow === 6) cd = 6;
     const c = findSec([`C:${cd}`], v0);
     if (c) srcs.push({ v: c.v, parts: parts(c.v, [c.sec.s + 1, c.sec.e], 'c'), label: 'Completas' });
+    const have = srcs[0] && srcs[0].parts ? srcs[0].parts : {};
+    if (!have.examen || !have.himno) { const oc = ordCompletas(c ? c.v : v0); if (oc) srcs.push({ v: oc.v, parts: parts(oc.v, oc.r, 'c'), label: 'Ordinario', only: ['examen', 'himno', 'concl', 'antmar'] }); }
     return { blocks: merge('c', srcs), notes, ctx: { d, o, h } };
   }
   // celebración
@@ -1139,12 +1159,15 @@ function renderIdx(v, idx, ctx, depth) {
       if ((ctx.part === 'himno' || ctx.part === 'salmodia') && depth === 0) autoN = 0;
       links.forEach((m, n) => { if (autoN < 0 && AUTO_TXT.test(BOOK.txt(m[2]))) autoN = n; });
       if (ctx.part === '_pre' || ctx.part === 'inv') autoN = -1;
+      if (ctx.part === 'himno' && /latinos|Apéndice/i.test(BOOK.txt(raw))) autoN = -1;   // himnos latinos: sólo enlace
       ph = ph.replace(/<a data-r="(\d+)">/g, (m, r) => `<a data-r="${r}" data-v="${v}" data-part="${ctx.part || ''}" data-d="${depth + 1}" tabindex="0" role="button">`);
       html += ph;
       if (autoN >= 0) {
         const tgt = +links[autoN][1];
-        html += `<div class="ref" data-for="${v}:${tgt}">${renderRef(v, tgt, ctx, depth + 1)}</div>`;
-        if (ctx.part === 'himno' && links.length > 1) html += `<div class="alt">Otros himnos: ${links.filter((_, n) => n !== autoN).map(m => `<button data-swap="${m[1]}" data-v="${v}">${esc(BOOK.txt(m[2]))}</button>`).join('')}</div>`;
+        if (ctx.part === 'himno' && links.length > 1) {
+          const ls = [links[autoN], ...links.filter((_, n) => n !== autoN)].slice(0, 3);
+          html += altTabs(`hl:${ctx.h}:${v}:${i}`, ls.map(m => ({ label: BOOK.txt(m[2]).replace(/[.,;:]+$/, ''), html: `<div class="ref" data-for="${v}:${m[1]}">${renderRef(v, +m[1], ctx, depth + 1)}</div>` })));
+        } else html += `<div class="ref" data-for="${v}:${tgt}">${renderRef(v, tgt, ctx, depth + 1)}</div>`;
       }
     } else html += ph;
   }
@@ -1157,10 +1180,63 @@ function renderRef(v, tgt, ctx, depth) {
 
 // ---------- alternativas en pestañas ----------
 const altSel = {};   // elección recordada durante la sesión (invitatorio, hora intermedia)
-function altTabs(key, items, def) {
+function altTabs(key, items, def, cls) {
   const sel = altSel[key] != null && altSel[key] < items.length ? altSel[key] : (def || 0);
-  return `<div class="alt-tabs" role="tablist">${items.map((it, n) => `<button role="tab" data-g="${esc(key)}" data-n="${n}" aria-selected="${n === sel}">${esc(it.label)}</button>`).join('')}</div>`
+  return `<div class="alt-tabs${cls ? ' ' + cls : ''}" role="tablist">${items.map((it, n) => `<button role="tab" data-g="${esc(key)}" data-n="${n}" aria-selected="${n === sel}">${esc(it.label)}</button>`).join('')}</div>`
     + items.map((it, n) => `<div class="alt-pane" data-g="${esc(key)}" data-n="${n}"${n === sel ? '' : ' hidden'}>${it.html}</div>`).join('');
+}
+// Primera línea de un texto, para el nombre de una pestaña
+function tabLabel(v, idx, fb) {
+  const P = BOOK.vols()[v].p;
+  for (const i of idx) { if (!['v', 't'].includes(P[i][0])) continue; let t = BOOK.txt(P[i][1]).replace(/^(V\.|R\.)\s*/, '').replace(/[,;:.]+$/, '').trim(); if (!t) continue; return t.length > 26 ? t.slice(0, 24).trim() + '…' : t; }
+  return fb;
+}
+// Completas: las tres fórmulas del acto penitencial
+function splitFormulas(v, idx) {
+  const P = BOOK.vols()[v].p, T = i => BOOK.txt(P[i][1]).trim();
+  const marks = []; idx.forEach((i, n) => { if ((P[i][0] === 'r' && /^(Primera|Segunda|Tercera|Cuarta) fórmula/i.test(T(i))) || (['r', 'v', 'ti'].includes(P[i][0]) && /^(I{1,3}|IV)\.?$/.test(T(i)))) marks.push(n); });
+  if (marks.length < 2) return null;
+  const last = marks[marks.length - 1]; let end = last + 1; while (end < idx.length && P[idx[end]][0] !== 'r') end++;
+  return { head: idx.slice(0, marks[0]), tail: idx.slice(end),
+    panes: marks.map((m, n) => ({ idx: idx.slice(m + 1, n + 1 < marks.length ? marks[n + 1] : end) })) };
+}
+// Himnos alternativos dentro de un mismo bloque («O bien:» o numerados I, II, III)
+function splitHymns(v, idx) {
+  const P = BOOK.vols()[v].p, T = i => BOOK.txt(P[i][1]).trim(), has = i => /<a data-r=/.test(P[i][1]);
+  let s0 = 0; while (s0 < idx.length && (P[idx[s0]][0] === 'l' || (P[idx[s0]][0] === 'r' && !/^O bien\b/i.test(T(idx[s0]))) || P[idx[s0]][0] === 'b')) s0++;
+  const num = [], obien = [];
+  idx.forEach((i, n) => { if (n < s0) return; const t = T(i);
+    if (['v', 'r', 'ti'].includes(P[i][0]) && /^(I{1,3}|IV)\.?$/.test(t)) num.push(n);
+    else if (P[i][0] === 'r' && /^O bien\b/i.test(t) && !has(i) && t.length < 40) obien.push(n); });
+  // final: rúbricas al pie del himno («Pueden usarse también…»)
+  let end = idx.length; while (end > s0 && (P[idx[end - 1]][0] === 'r' || P[idx[end - 1]][0] === 'b') && !/^O bien\b/i.test(T(idx[end - 1]))) end--;
+  const cuts = [...num.map(n => ({ n, skip: true })), ...obien.map(n => ({ n, skip: true }))].sort((a, b) => a.n - b.n);
+  if (!cuts.length || (num.length === 1 && !obien.length)) return null;
+  const panes = []; let st = s0;
+  for (const c of cuts) { if (c.n > st) panes.push(idx.slice(st, c.n)); st = c.n + 1; }
+  if (end > st) panes.push(idx.slice(st, end));
+  const body = panes.map(p => p.filter(i => P[i][0] !== 'b' || true)).filter(p => p.some(i => P[i][0] === 'v' || P[i][0] === 't'));
+  if (body.length < 2) return null;
+  // numerados sin «O bien»: sólo son alternativos si cada parte termina en «Amén»
+  if (!obien.length && !body.slice(0, -1).every(p => { const q = p.filter(i => P[i][0] !== 'b'); return q.length && /Amén\.?$/.test(T(q[q.length - 1])); })) return null;
+  return { head: idx.slice(0, s0), tail: idx.slice(end), panes: body.slice(0, 3) };
+}
+// Hora intermedia: separa Tercia, Sexta y Nona para elegir una sola
+const HI_NAMES = { tercia: 'Tercia', sexta: 'Sexta', nona: 'Nona' };
+function hiDefault() { const h = new Date().getHours(); return h < 12 ? 0 : h < 15 ? 1 : 2; }
+function splitHI(v, idx) {
+  const P = BOOK.vols()[v].p, T = i => BOOK.txt(P[i][1]).trim();
+  const marks = []; idx.forEach((i, n) => { if (P[i][0] === 'l' && HI_NAMES[P[i][2]]) marks.push(n); });
+  if (marks.length < 2) return null;
+  let end = idx.length; while (end > marks[marks.length - 1] + 1 && P[idx[end - 1]][0] === 'r' && /conclusi[oó]n/i.test(T(idx[end - 1]))) end--;
+  return { head: idx.slice(0, marks[0]), tail: idx.slice(end),
+    panes: marks.map((m, n) => ({ label: HI_NAMES[P[idx[m]][2]], idx: idx.slice(m + 1, n + 1 < marks.length ? marks[n + 1] : end) })) };
+}
+function hiHTML(v, idx, ctx) {
+  const sp = splitHI(v, idx);
+  if (!sp) return renderIdx(v, idx, ctx, 0);
+  return renderIdx(v, sp.head, ctx, 0) + altTabs('hi-hora', sp.panes.map(p => ({ label: p.label,
+    html: `<div class="hora-pane-tit">${esc(p.label)}</div>` + renderIdx(v, p.idx, ctx, 0) })), hiDefault(), 'hora-sel') + renderIdx(v, sp.tail, ctx, 0);
 }
 function readingLabel(v, idx, fallback) {
   const P = BOOK.vols()[v].p;
@@ -1206,8 +1282,11 @@ function renderHour() {
   r.blocks.forEach((b, bi) => {
     if (b.k === 'conm') { out.push(`<p class="conm">${esc(b.title)}</p>`); return; }
     const part = b.k.replace(/\+$/, '');
-    const idx = filterReadings(b.v, b.idx, part);
     const P = BOOK.vols()[b.v].p;
+    let idx = filterReadings(b.v, b.idx, part);
+    if (h === 'inv') idx = idx.filter(i => !(P[i][0] === 'r' && /^E?El salmo (del )?invitatorio\b[^.]*\.?\s*$|^Y a continuación:\s*salmo 94/i.test(BOOK.txt(P[i][1]).trim())));
+    if (h === 'c') idx = idx.filter(i => !(P[i][0] === 'r' && /^Todo como en el Ordinario/i.test(BOOK.txt(P[i][1]).trim())));
+    if (h === 'hi') idx = idx.filter(i => !/^Tercia,\s*Sexta,\s*Nona\.?$/i.test(BOOK.txt(P[i][1]).trim()));
     // Segunda lectura con varias propuestas
     if (part === 'l2') {
       const sp = splitReadings(b.v, idx);
@@ -1221,9 +1300,43 @@ function renderHour() {
         return;
       }
     }
+    // Completas: fórmulas penitenciales en pestañas
+    if (part === 'examen') {
+      const sp = splitFormulas(b.v, idx);
+      if (sp) {
+        out.push(`<div data-block="examen">${renderIdx(b.v, sp.head, { h, part }, 0)}${altTabs('penit', sp.panes.map((p, n) => ({ label: tabLabel(b.v, p.idx, 'Fórmula ' + (n + 1)), html: renderIdx(b.v, p.idx, { h, part }, 0) })))}${renderIdx(b.v, sp.tail, { h, part }, 0)}</div>`);
+        if (S.showKeys) out.push(`<p class="src">${esc(b.k)} · tomo ${b.v} · ${esc(b.src || '')}</p>`);
+        return;
+      }
+    }
+    // Himnos alternativos: hasta tres en pestañas
+    if (part === 'himno') {
+      const sp = splitHymns(b.v, idx);
+      if (sp) {
+        out.push(`<div data-block="${esc(b.k)}">${renderIdx(b.v, sp.head, { h, part }, 0)}${altTabs(`himno:${h}:${b.v}:${b.idx[0]}`, sp.panes.map((p, n) => ({ label: tabLabel(b.v, p, 'Himno ' + (n + 1)), html: renderIdx(b.v, p, { h, part }, 0) })))}${renderIdx(b.v, sp.tail, { h, part }, 0)}</div>`);
+        if (S.showKeys) out.push(`<p class="src">${esc(b.k)} · tomo ${b.v} · ${esc(b.src || '')}</p>`);
+        return;
+      }
+    }
     // Hora intermedia: salmodia del día o complementaria
     if (h === 'hi' && b.k === 'raw') {
       const comp = BOOK.complementaria(), T = i => BOOK.txt(P[i][1]);
+      const tI = idx.findIndex(i => P[i][0] === 'l' && HI_NAMES[P[i][2]]);
+      const sI0 = idx.findIndex(i => P[i][0] === 'l' && P[i][2] === 'salmodia');
+      const hs = tI >= 0 && (sI0 < 0 || sI0 > tI) && !idx.slice(tI).some(i => P[i][0] === 'ps') ? splitHI(b.v, idx) : null;
+      if (hs) {
+        const ps = BOOK.hiSalterio(r.ctx.d);
+        const psTabs = n => comp.length ? altTabs('hi-ps-' + n, [...(ps ? [{ label: 'Del día', html: renderIdx(ps.v, ps.idx, { h, part: 'salmodia' }, 0) }] : []),
+          ...comp.map(c => ({ label: c.label.replace(/\s*\((\w+)\)/, ' · $1'), html: renderIdx(c.v, c.idx, { h, part: 'salmodia' }, 1) }))]) : '';
+        const paneHTML = (p, n, lab) => {
+          let k = p.findIndex(i => P[i][0] === 'l' && P[i][2] === 'salmodia');
+          if (k < 0) { k = 0; while (k < p.length && P[p[k]][0] === 'a') k++; k--; }
+          return `<div class="hora-pane-tit">${esc(lab)}</div>` + renderIdx(b.v, p.slice(0, k + 1), { h, part }, 0) + psTabs(n) + renderIdx(b.v, p.slice(k + 1), { h, part }, 0);
+        };
+        out.push(`<div data-block="raw">${renderIdx(b.v, hs.head, { h, part }, 0)}<div class="lab">Elija la hora</div>${altTabs('hi-hora', hs.panes.map((p, n) => ({ label: p.label, html: paneHTML(p.idx, n, p.label) })), hiDefault(), 'hora-sel')}${renderIdx(b.v, hs.tail, { h, part }, 0)}</div>`);
+        if (S.showKeys) out.push(`<p class="src">${esc(b.k)} · tomo ${b.v} · ${esc(b.src || '')}</p>`);
+        return;
+      }
       let before, own, after, label = '';
       const sI = idx.findIndex(i => P[i][0] === 'l' && P[i][2] === 'salmodia');
       if (sI >= 0) {
@@ -1245,12 +1358,12 @@ function renderHour() {
         }
         const items = [{ label: 'Del día', html: renderIdx(day.v, day.idx, { h, part: 'salmodia' }, 0) },
           ...comp.map(c => ({ label: c.label.replace(/\s*\((\w+)\)/, ' · $1'), html: renderIdx(c.v, c.idx, { h, part: 'salmodia' }, 1) }))];
-        out.push(`<div data-block="raw">${renderIdx(b.v, before, { h, part }, 0)}${label}${rub}${altTabs(def ? 'hi-sol' : 'hi', items, def)}${renderIdx(b.v, after, { h, part }, 0)}</div>`);
+        out.push(`<div data-block="raw">${renderIdx(b.v, before, { h, part }, 0)}${label}${rub}${altTabs(def ? 'hi-sol' : 'hi', items, def)}<div class="lab">Elija la hora</div>${hiHTML(b.v, after, { h, part })}</div>`);
         if (S.showKeys) out.push(`<p class="src">${esc(b.k)} · tomo ${b.v} · ${esc(b.src || '')}</p>`);
         return;
       }
     }
-    out.push(`<div data-block="${esc(b.k)}">${renderIdx(b.v, idx, { h, part }, 0)}</div>`);
+    out.push(`<div data-block="${esc(b.k)}">${h === 'hi' ? hiHTML(b.v, idx, { h, part }) : renderIdx(b.v, idx, { h, part }, 0)}</div>`);
     if (S.showKeys) out.push(`<p class="src">${esc(b.k)} · tomo ${b.v} · ${esc(b.src || '')}</p>`);
   });
   if (h === 'inv') {
